@@ -1,5 +1,12 @@
 * text=auto eol=lf
 
+# Los scripts de Windows DEBEN conservar CRLF: cmd.exe no procesa bien los
+# .bat con finales LF (puede no encontrar etiquetas ni resolver bloques
+# multilinea), y PowerShell 5.1 es mas fiable con CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
 *.blade.php diff=html
 *.css diff=css
 *.html diff=html
