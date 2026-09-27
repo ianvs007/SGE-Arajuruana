@@ -10,7 +10,9 @@ demo: `password` (cámbiela antes de cualquier uso real).
 
 ## 1. Inicio de sesión y navegación
 
-- Ingrese a `http://127.0.0.1:8000` (o la IP del servidor en red local).
+- Ingrese a `http://127.0.0.1/sge` si corre bajo Apache de XAMPP, o a
+  `http://127.0.0.1:8000` si usa `php artisan serve` (o la IP del servidor en
+  red local, p. ej. `http://192.168.1.10/sge`).
 - Escriba su correo y contraseña. Tras 5 intentos fallidos la cuenta se bloquea
   temporalmente (límite de intentos, §6).
 - **No existe registro público:** las cuentas las crea Administración.
@@ -153,9 +155,10 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
 
 ## 5. Recorrido de demostración para la defensa (~15 minutos)
 
-Preparación previa: XAMPP con MySQL activo, `php artisan serve` corriendo,
-base sembrada (`db:seed`), un navegador abierto y un celular en la misma red
-(opcional, para mostrar el responsive).
+Preparación previa: servicio `MySQL80` activo, servidor web arriba (Apache de
+XAMPP → `http://127.0.0.1/sge`, o `php artisan serve` →
+`http://127.0.0.1:8000`), base sembrada (`db:seed`), un navegador abierto y un
+celular en la misma red (opcional, para mostrar el responsive).
 
 | # | Qué mostrar | Cuenta | Pasos |
 |---|---|---|---|
