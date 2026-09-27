@@ -531,26 +531,45 @@ media queries `min-width:640px/768px/1024px` están presentes en el bundle compi
 
 **Resultado:** `php artisan test` → **151 pruebas en verde (678 aserciones)**.
 
-### Pendientes detectados en esta auditoría (sin efecto funcional)
+### Restos de versiones previas eliminados
 
-Quedan restos de versiones previas **no alcanzables** — ninguna ruta los expone y ningún
-controlador los renderiza. No rompen nada, pero conviene decidir si se eliminan o se completan:
+Se detectaron archivos **no alcanzables** — ninguna ruta los exponía y ningún controlador los
+renderizaba — que además referenciaban rutas inexistentes. Se verificó uno por uno que ningún
+código activo los usaba (las coincidencias de `usuarios.*` en `UserController`/`Permisos` son
+nombres de eventos de auditoría y de permiso, no vistas; `salidas/_form` solo lo incluía el
+propio `edit` eliminado, ya que `create` tiene su formulario inline) y se eliminaron:
 
 - `resources/views/usuarios/` (4 archivos) — el módulo activo es `resources/views/users/`
   (`UserController` renderiza `users.*`; las rutas son `users.*`). La carpeta `usuarios/`
-  referencia rutas inexistentes (`usuarios.store`, `usuarios.index`, `usuarios.update`).
+  apuntaba a rutas inexistentes (`usuarios.store`, `usuarios.index`, `usuarios.update`).
 - `resources/views/cargos/` (5 archivos) — el módulo activo es `resources/views/cuentas/`
-  (`CargoCuentaController` renderiza `cuentas.*`). La carpeta `cargos/` referencia rutas
+  (`CargoCuentaController` renderiza `cuentas.*`). La carpeta `cargos/` apuntaba a rutas
   inexistentes (`cargos.store`, `cargos.create`, `cargos.show`, `cargos.edit`, `cargos.update`).
-- `resources/views/salidas/edit.blade.php` — referencia `salidas.update`, ruta inexistente
+- `resources/views/salidas/edit.blade.php` — apuntaba a `salidas.update`, ruta inexistente
   (`SalidaEstudianteController` no expone `edit`/`update`; el ciclo de vida de una salida se
   gestiona con `salidas.retorno`, `salidas.cancelar` y `salidas.salida-efectiva`).
 - `resources/views/welcome.blade.php` (80.6 KB) y `resources/views/auth/register.blade.php` con
   `app/Http/Controllers/Auth/RegisteredUserController.php` — la ruta raíz redirige a
   `dashboard`/`login`, y **§5/§20.1 exige que no exista registro público** (lo comprueba
-  `RegistrationTest`, que pasa justamente porque la ruta `register` no está registrada). Es
-  código muerto del andamiaje inicial de Laravel; dejarlo supone riesgo si alguien registra la
-  ruta más adelante.
+  `RegistrationTest`, que pasa justamente porque la ruta `register` no está registrada). Era
+  andamiaje inicial de Laravel sin uso; eliminarlo quita el riesgo de que alguien registre la
+  ruta más adelante y abra una puerta de creación de cuentas fuera de Administración.
+
+Tras el borrado: `php artisan test` → **151 pruebas en verde (678 aserciones)**.
+
+### Control de versiones
+
+El proyecto quedó bajo git (`main`, commit inicial con 287 archivos / 39 114 líneas). El
+`.gitignore` excluye `.env`, `/vendor`, `/node_modules` y `/public/build`; se verificó antes del
+commit que **ningún secreto** entrara al índice: `.env` está efectivamente ignorado y
+`.env.example` solo contiene placeholders (`null`, `root`, `127.0.0.1`) con `APP_KEY` y
+`DB_PASSWORD` vacíos. Los assets compilados se regeneran con `npm run build`, por lo que no se
+versionan.
+
+Motivo: el proyecto se perdió una vez por borrado accidental de la carpeta. Con el historial git
+local ya no depende de una sola copia del sistema de archivos. **Conviene añadir un remoto**
+(GitHub privado, GitLab o un repositorio en red institucional) y hacer `git push` para tener una
+copia fuera de esta máquina — ver `docs/RESPALDOS.md`.
 
 Nota de entorno: `.env` apunta a MySQL 8 (`sge_arajuruana`) con credenciales que el servidor
 rechaza en esta máquina, por lo que `php artisan serve` + `/login` devuelve `QueryException`
