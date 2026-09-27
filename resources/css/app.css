@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Alpine: oculta elementos x-cloak hasta que el framework inicializa
+   (evita el parpadeo de campos condicionales en formularios, §13). */
+[x-cloak] {
+    display: none !important;
+}
