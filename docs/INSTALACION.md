@@ -30,8 +30,15 @@ incluidas en el repositorio de entrega):
 
 1. Descargue XAMPP (https://www.apachefriends.org) e instale en `C:\xampp`.
 2. Abra el **Panel de control de XAMPP** y pulse **Start** en:
-   - **Apache** (solo si usará phpMyAdmin; la app usa `artisan serve`).
-   - **MySQL** (obligatorio).
+   - **Apache** (obligatorio si usará el método Apache del paso 9; la base de
+     datos **no** corre en el MariaDB de XAMPP sino en el servicio `MySQL80`,
+     ver §3).
+   - **MySQL** (opcional: la app usa el servicio `MySQL80` del sistema).
+
+> **Nota sobre MySQL:** este proyecto usa el servidor MySQL 8 instalado como
+> servicio de Windows (`MySQL80`, puerto 3306), no el MariaDB de XAMPP. Si en el
+> panel de XAMPP el botón **Start** de MySQL falla por puerto ocupado, es normal:
+> puede dejarlo detenido.
 3. Verifique MySQL:
 
 ```powershell
@@ -99,7 +106,7 @@ ningún repositorio). Revise en `.env`:
 ```ini
 APP_ENV=local
 APP_DEBUG=true            # en local; NO dejar true en un despliegue real
-APP_URL=http://localhost:8000
+APP_URL=http://127.0.0.1/sge   # método Apache (ver §9); si usa artisan serve: http://127.0.0.1:8000
 APP_TIMEZONE=America/La_Paz
 APP_LOCALE=es
 
@@ -155,13 +162,58 @@ entrega ya incluye `public/build/`, puede omitir este paso.
 
 ## 9. Arrancar la aplicación
 
+Existen dos métodos. Elija **uno**; si usará Apache, ajuste antes `APP_URL` en
+`.env` (§6) y limpie la caché: `php artisan config:clear`.
+
+### 9.A Apache de XAMPP (recomendado, ya configurado en esta máquina)
+
+La app se sirve mediante un *junction* que apunta al directorio `public/` de
+Laravel, sin copiar archivos:
+
+| Elemento | Valor |
+|---|---|
+| URL de acceso | **http://127.0.0.1/sge** |
+| `APP_URL` requerido | `http://127.0.0.1/sge` |
+| Junction | `C:\xampp\htdocs\sge` → `<proyecto>\public` |
+| Motor PHP | `php8apache2_4.dll` (PHP 8.2 de XAMPP) |
+
+Pasos:
+
+1. **Start** en Apache desde el panel de XAMPP.
+2. Abra **http://127.0.0.1/sge** en el navegador.
+
+Si Apache no arranca, verifique que exista `C:\xampp\htdocs`:
+
+```powershell
+& "C:\xampp\apache\bin\httpd.exe" -t -d "C:/xampp/apache"   # debe decir "Syntax OK"
+```
+
+> **Falla conocida:** si `C:\xampp\htdocs` desaparece (por ejemplo al borrar una
+> carpeta enlazada), Apache muere con `AH00526: DocumentRoot ... is not a
+> directory`. Se recrea así:
+>
+> ```powershell
+> New-Item -ItemType Directory -Path "C:\xampp\htdocs" -Force
+> cmd /c "mklink /J C:\xampp\htdocs\sge `"<ruta absoluta del proyecto>\public`""
+> ```
+>
+> El `httpd.conf` de XAMPP ya trae `mod_rewrite` activo y
+> `AllowOverride All` + `Require all granted` en `<Directory "C:/xampp/htdocs">`,
+> por lo que el `.htaccess` de Laravel funciona sin cambios adicionales. Las
+> URLs, los assets de Vite y las redirecciones se generan automáticamente con el
+> prefijo `/sge`.
+
+### 9.B Servidor de desarrollo de Laravel (alternativa)
+
 ```powershell
 php artisan serve
 ```
 
-Abra en el navegador: **http://127.0.0.1:8000**
+Abra en el navegador: **http://127.0.0.1:8000** (con `APP_URL=http://127.0.0.1:8000`).
 
-Cuentas demo (contraseña `password`):
+### Cuentas demo (ambos métodos)
+
+Contraseña para todas: `password`
 
 | Cuenta | Rol |
 |---|---|
@@ -176,8 +228,12 @@ Cuentas demo (contraseña `password`):
 > **Seguridad:** cambie estas contraseñas demo antes de cualquier uso real y no
 > exponga el servidor a internet.
 
-**Detener la app:** en la ventana de `artisan serve`, pulse `Ctrl+C`.
-**Detener MySQL/Apache:** botón **Stop** en el panel de XAMPP.
+**Detener la app:**
+- Método 9.A (Apache): botón **Stop** en Apache desde el panel de XAMPP.
+- Método 9.B (`artisan serve`): `Ctrl+C` en la ventana donde corre.
+
+**Detener MySQL:** detenga el servicio `MySQL80` (Apache/MySQL en el panel de
+XAMPP si los usa).
 
 ## 10. Acceder desde celular o tableta (misma red local, §19)
 
@@ -189,15 +245,29 @@ ipconfig    # anote "Dirección IPv4", p. ej. 192.168.1.10
 
 2. Arranque el servidor abierto a la red local:
 
+- **Método 9.A (Apache):** Apache ya escucha en `0.0.0.0:80`, no requiere nada
+  adicional. Solo autorice `httpd.exe` (TCP 80) en el Firewall de Windows si
+  aparece el aviso la primera vez.
+- **Método 9.B (`artisan serve`):**
+
 ```powershell
 php artisan serve --host=0.0.0.0 --port=8000
 ```
 
-3. En el celular/tableta (conectado al MISMO wifi) abra
-   `http://192.168.1.10:8000`.
+3. En el celular/tableta (conectado al MISMO wifi) abra:
 
-4. Si no carga, autorice PHP en el Firewall de Windows (aparece un aviso la
-   primera vez) o agregue una regla de entrada TCP 8000 para `php.exe`.
+- **Método 9.A:** `http://192.168.1.10/sge`
+- **Método 9.B:** `http://192.168.1.10:8000`
+
+4. Si no carga, autorice el proceso (`httpd.exe` o `php.exe`) en el Firewall de
+   Windows (aparece un aviso la primera vez) o agregue una regla de entrada
+   TCP 80 / TCP 8000 según corresponda.
+
+> **Importante — `APP_URL` y los estilos en el celular:** `APP_URL` debe usar la
+> IP con la que accede el dispositivo móvil, no `localhost` ni `127.0.0.1`; de lo
+> contrario Laravel generará los assets (`/build/assets/*.css|js`) apuntando a
+> `localhost` y el celular cargará la página **sin estilos ni JavaScript**.
+> Ajuste `APP_URL` y ejecute `php artisan config:clear` tras cada cambio.
 
 ### 10.1 Checklist verificado (sesión real del 23/09/2026, Android + Chrome)
 

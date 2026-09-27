@@ -19,6 +19,12 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- APP_URL sin subdirectorio: en producción/local la app puede servirse
+             bajo un prefijo de Apache (p. ej. http://127.0.0.1/sge vía junction),
+             pero las rutas registradas en Laravel son raíz (/login, /dashboard...).
+             Fijar aquí APP_URL evita que un .env con subdirectorio haga que el
+             helper de pruebas pida /sge/login y reciba 404. -->
+        <env name="APP_URL" value="http://127.0.0.1"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
