@@ -110,6 +110,34 @@ if ($faltan.Count -gt 0) {
 Paso-Ok 'Todas las extensiones necesarias estan habilitadas'
 
 # ---------------------------------------------------------------------
+# 2.1) Dependencias de Composer (vendor/ no se versiona en git)
+# ---------------------------------------------------------------------
+Write-Host ''
+if (Test-Path (Join-Path $Raiz 'vendor\autoload.php')) {
+    Paso-Ok 'Dependencias de Composer ya instaladas (vendor/)'
+} else {
+    Paso-Info 'Falta vendor/: instalando dependencias con Composer (requiere internet)...'
+    $composer = (Get-Command composer -ErrorAction SilentlyContinue).Source
+    if ($composer) {
+        & $composer install --no-interaction --prefer-dist 2>&1 | ForEach-Object { Write-Host "            $_" -ForegroundColor DarkGray }
+    } elseif (Test-Path (Join-Path $Raiz 'composer.phar')) {
+        & $phpExe (Join-Path $Raiz 'composer.phar') install --no-interaction --prefer-dist 2>&1 | ForEach-Object { Write-Host "            $_" -ForegroundColor DarkGray }
+    } else {
+        Paso-Error 'No se encontro Composer.'
+        Write-Host ''
+        Write-Host '   Instalelo desde https://getcomposer.org/Composer-Setup.exe'
+        Write-Host '   (elija C:\xampp\php\php.exe cuando pregunte por PHP), cierre'
+        Write-Host '   esta ventana y vuelva a ejecutar INSTALAR.bat'
+        Terminar 1
+    }
+    if (-not (Test-Path (Join-Path $Raiz 'vendor\autoload.php'))) {
+        Paso-Error 'composer install no genero vendor/. Revise el mensaje de arriba.'
+        Terminar 1
+    }
+    Paso-Ok 'Dependencias de Composer instaladas'
+}
+
+# ---------------------------------------------------------------------
 # 3) Crear .env si no existe
 # ---------------------------------------------------------------------
 Write-Host ''

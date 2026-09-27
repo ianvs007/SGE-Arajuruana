@@ -3,24 +3,35 @@
 **Unidad Educativa Arajuruana Fe y Alegría** — Sistema de Gestión Educativa
 Laravel 12 · PHP 8.2 · MySQL 8 · Tailwind CSS · Vite
 
-> **Este paquete ya incluye `vendor/` y `public/build/`.**
-> Por lo tanto **NO necesitas instalar Composer ni Node.js.** Solo PHP y MySQL.
-> Tamaño: ~85 MB.
+> El repositorio incluye `public/build/` ya compilado, así que **no hace falta
+> Node.js**. Sí hace falta **Composer** para descargar `vendor/` (las
+> dependencias PHP no se guardan en git); `INSTALAR.bat` lo ejecuta solo.
 
 ---
 
-## Instalación rápida (5 minutos)
+## Instalación rápida
 
 1. Instalar **XAMPP** con PHP 8.2 → https://www.apachefriends.org
-2. Copiar la carpeta `sge` a `C:\proyectos\sge`
-3. Iniciar **MySQL** desde el panel de XAMPP y crear la base:
+2. Instalar **Git** → https://git-scm.com/download/win
+3. Instalar **Composer** → https://getcomposer.org/Composer-Setup.exe
+   (cuando pregunte por PHP, elegir `C:\xampp\php\php.exe`)
+4. Descargar el proyecto (el dueño del repositorio privado debe haberlo
+   invitado como colaborador en GitHub):
+
+```powershell
+cd C:\proyectos
+git clone https://github.com/USUARIO/SGE-Arajuruana.git
+cd SGE-Arajuruana
+```
+
+5. Iniciar **MySQL** desde el panel de XAMPP y crear la base:
 
 ```powershell
 & "C:\xampp\mysql\bin\mysql.exe" -u root -p -e "CREATE DATABASE sge_arajuruana CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 ```
 
-4. Doble clic en **`INSTALAR.bat`** (dentro de la carpeta del proyecto)
-5. Cuando termine: `php artisan serve` → **http://127.0.0.1:8000**
+6. Doble clic en **`INSTALAR.bat`** (dentro de la carpeta del proyecto)
+7. Cuando termine: `php artisan serve` → **http://127.0.0.1:8000**
 
 Cuenta de prueba: `administracion@sge.local` / contraseña `password`
 
@@ -60,10 +71,10 @@ punto y coma de las líneas `extension=...` faltantes en `php.ini`.
 
 ## 2. Copiar el proyecto
 
-Copie la carpeta `sge` a una ruta **sin espacios ni acentos**:
+Clone o copie el proyecto en una ruta **sin espacios ni acentos**:
 
 ```
-C:\proyectos\sge
+C:\proyectos\SGE-Arajuruana
 ```
 
 > **Evite** rutas como `C:\Mis Documentos\...` y carpetas sincronizadas
@@ -113,7 +124,7 @@ Doble clic en **`INSTALAR.bat`**, dentro de la carpeta del proyecto.
 > Si Windows bloquea el script, ábralo con clic derecho → **Ejecutar como
 > administrador**, o ejecútelo desde PowerShell:
 > ```powershell
-> cd C:\proyectos\sge
+> cd C:\proyectos\SGE-Arajuruana
 > powershell -NoProfile -ExecutionPolicy Bypass -File .\instalar.ps1
 > ```
 
@@ -143,7 +154,7 @@ Al terminar ofrece arrancar el servidor.
 ### 4.1 Instalación manual (si prefiere no usar el script)
 
 ```powershell
-cd C:\proyectos\sge
+cd C:\proyectos\SGE-Arajuruana
 
 Copy-Item .env.example .env
 notepad .env          # editar APP_URL y las lineas DB_*
@@ -180,7 +191,7 @@ DB_PASSWORD=su_contrasena_de_mysql
 ### 5.A Servidor de Laravel (recomendado para probar)
 
 ```powershell
-cd C:\proyectos\sge
+cd C:\proyectos\SGE-Arajuruana
 php artisan serve
 ```
 
@@ -193,7 +204,7 @@ Cree un *junction* hacia el directorio `public/`:
 
 ```powershell
 New-Item -ItemType Directory -Path "C:\xampp\htdocs" -Force
-cmd /c "mklink /J C:\xampp\htdocs\sge `"C:\proyectos\sge\public`""
+cmd /c "mklink /J C:\xampp\htdocs\sge `"C:\proyectos\SGE-Arajuruana\public`""
 ```
 
 Luego **Start** en Apache y abra **http://127.0.0.1/sge**
