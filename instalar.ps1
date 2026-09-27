@@ -9,7 +9,11 @@
 #  de codigo 850 y los acentos UTF-8 se muestran como caracteres rotos.
 # =====================================================================
 
-$ErrorActionPreference = 'Stop'
+# 'Continue' y no 'Stop': en PowerShell 5.1, con '2>&1' cada linea que un
+# programa externo escribe en stderr se vuelve un ErrorRecord, y con 'Stop'
+# aborta el script. Composer escribe su progreso normal en stderr. Los fallos
+# reales se detectan con $LASTEXITCODE y Test-Path.
+$ErrorActionPreference = 'Continue'
 $Raiz = Split-Path -Parent $MyInvocation.MyCommand.Path
 Set-Location $Raiz
 
