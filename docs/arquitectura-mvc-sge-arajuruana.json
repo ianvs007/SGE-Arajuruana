@@ -1,0 +1,205 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SGE Arajuruana — Arquitectura MVC (Modelo · Vista · Controlador)",
+    "quality_profile": "showcase",
+    "viewBox": [1240, 500],
+    "repository": {
+      "url": "https://github.com/ianvs007/SGE-Arajuruana",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "533b79266a196b23dc614416082a78f33635e72a"
+    },
+    "views": [
+      {
+        "id": "ciclo-mvc",
+        "label": "Ciclo MVC",
+        "focus": ["usuarios", "rutas", "controlador", "modelo", "vista"],
+        "note": "Petición → controlador → modelo → vista → HTML de vuelta al usuario."
+      },
+      {
+        "id": "capa-datos",
+        "label": "Capa de datos",
+        "focus": ["controlador", "modelo", "mysql"],
+        "note": "Eloquent traduce objetos a SQL sobre MySQL (XAMPP local)."
+      },
+      {
+        "id": "seguridad",
+        "label": "Roles y alcance",
+        "focus": ["permisos", "rutas", "modelo"],
+        "note": "Middleware permission en rutas; Alcance acota la consulta del modelo."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "usuarios",
+      "type": "external",
+      "label": "Usuarios por rol",
+      "sublabel": "6 roles · sesión + CSRF",
+      "pos": [40, 230],
+      "size": [180, 64]
+    },
+    {
+      "id": "rutas",
+      "type": "security",
+      "label": "Rutas + middleware",
+      "sublabel": "routes/web.php",
+      "pos": [320, 230],
+      "size": [190, 64],
+      "sources": [{ "path": "routes/web.php", "line": 40, "label": "middleware permission" }]
+    },
+    {
+      "id": "controlador",
+      "type": "backend",
+      "label": "Controlador",
+      "sublabel": "lógica de la acción HTTP",
+      "pos": [610, 230],
+      "size": [210, 64],
+      "sources": [{ "path": "app/Http/Controllers/EstudianteController.php", "line": 16, "label": "index()" }]
+    },
+    {
+      "id": "permisos",
+      "type": "security",
+      "label": "Roles y permisos",
+      "sublabel": "spatie + alcance por registro",
+      "pos": [320, 40],
+      "size": [190, 64],
+      "sources": [
+        { "path": "app/Support/Permisos.php", "label": "matriz rol → permiso" },
+        { "path": "app/Support/Alcance.php", "line": 23, "label": "alcance por rol" }
+      ]
+    },
+    {
+      "id": "modelo",
+      "type": "backend",
+      "label": "Modelo · Eloquent",
+      "sublabel": "dominio y relaciones",
+      "pos": [610, 40],
+      "size": [210, 64],
+      "sources": [{ "path": "app/Models/Estudiante.php", "line": 10, "label": "class Estudiante" }]
+    },
+    {
+      "id": "mysql",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "XAMPP · datos locales",
+      "pos": [900, 40],
+      "size": [200, 64],
+      "sources": [{ "path": "config/database.php", "label": "conexión mysql" }]
+    },
+    {
+      "id": "vista",
+      "type": "frontend",
+      "label": "Vista · Blade",
+      "sublabel": "UI en servidor (Vite)",
+      "pos": [610, 380],
+      "size": [210, 64],
+      "sources": [{ "path": "resources/views/estudiantes/index.blade.php", "label": "listado" }]
+    },
+    {
+      "id": "servicios",
+      "type": "backend",
+      "label": "Servicios",
+      "sublabel": "PDF · Excel · respaldos",
+      "pos": [900, 380],
+      "size": [200, 64],
+      "sources": [{ "path": "app/Services/ReporteService.php", "label": "totales únicos" }]
+    }
+  ],
+  "connections": [
+    {
+      "id": "usuario-a-rutas",
+      "from": "usuarios",
+      "to": "rutas",
+      "label": "HTTP :8000",
+      "variant": "emphasis"
+    },
+    {
+      "id": "rutas-a-controlador",
+      "from": "rutas",
+      "to": "controlador",
+      "label": "despacha"
+    },
+    {
+      "id": "permisos-a-rutas",
+      "from": "permisos",
+      "to": "rutas",
+      "label": "middleware permission",
+      "variant": "security",
+      "labelDy": 24
+    },
+    {
+      "id": "controlador-a-modelo",
+      "from": "controlador",
+      "to": "modelo",
+      "label": "Eloquent"
+    },
+    {
+      "id": "modelo-a-mysql",
+      "from": "modelo",
+      "to": "mysql",
+      "label": "SQL"
+    },
+    {
+      "id": "controlador-a-vista",
+      "from": "controlador",
+      "to": "vista",
+      "label": "view(datos)",
+      "labelDy": 24
+    },
+    {
+      "id": "vista-a-usuario",
+      "from": "vista",
+      "to": "usuarios",
+      "label": "HTML",
+      "variant": "emphasis"
+    },
+    {
+      "id": "controlador-a-servicios",
+      "from": "controlador",
+      "to": "servicios",
+      "label": "PDF · Excel",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Modelo (M)",
+      "items": [
+        "Eloquent: Estudiante, Curso, Inscripcion, Pago",
+        "Relaciones y casts; montos en centavos",
+        "Toda consulta pasa por Alcance según rol"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Vista (V)",
+      "items": [
+        "Blade renderizado en el servidor",
+        "Tailwind compilado con Vite, sin CDN",
+        "Layouts app/guest y menú por permiso"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Controlador (C)",
+      "items": [
+        "Recibe Request, valida y orquesta",
+        "Devuelve view() o redirect()",
+        "Delega reportes a app/Services"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Transversal",
+      "items": [
+        "spatie/laravel-permission: roles y permisos",
+        "Middleware permission en routes/web.php",
+        "dompdf y maatwebsite/excel"
+      ]
+    }
+  ]
+}
