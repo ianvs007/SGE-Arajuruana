@@ -45,11 +45,18 @@ class RolesPermisosTest extends TestCase
             ->assertSee('Gestión 2026');
     }
 
-    public function test_director_no_puede_configurar_gestiones(): void
+    public function test_director_tiene_acceso_a_todo_el_sistema(): void
     {
+        // Matriz corregida el 30/09/2026: el Director accede a TODO el sistema,
+        // incluida la configuración de gestiones y cursos.
         $this->actingAs($this->usuario('director@sge.local'))
             ->get('/gestiones')
-            ->assertForbidden();
+            ->assertOk()
+            ->assertSee('Gestión 2026');
+
+        $this->actingAs($this->usuario('director@sge.local'))
+            ->get('/cursos')
+            ->assertOk();
     }
 
     public function test_docente_no_puede_configurar_gestiones_ni_cursos(): void

@@ -22,11 +22,19 @@
         tfoot td { background: #f8fafc; font-weight: bold; }
         .nota { margin-top: 10px; font-size: 8px; color: #64748b; }
         .vencido { color: #b91c1c; }
+        /* Logo institucional pequeño, arriba a la izquierda (30/09/2026). */
+        .cabecera-reporte { width: 100%; border-collapse: collapse; margin-bottom: 6px; }
+        .logo-institucional { width: 52px; height: 52px; }
     </style>
 </head>
 <body>
-    <h1>Reporte económico por alumno — aporte mensual</h1>
-    <div class="institucion">{{ config('institucion.nombre') }} — {{ config('institucion.distrito') }}</div>
+    <table class="cabecera-reporte"><tr>
+        <td style="width: 60px; vertical-align: top;">@include('reportes._logo', ['base64' => true])</td>
+        <td style="vertical-align: top;">
+            <h1>Reporte económico por alumno — aporte mensual</h1>
+            <div class="institucion">{{ config('institucion.nombre') }} — {{ config('institucion.distrito') }}</div>
+        </td>
+    </tr></table>
 
     <div class="meta">
         <span><strong>Gestión:</strong> {{ $data['gestion']?->nombre ?? 'Todas' }}</span>

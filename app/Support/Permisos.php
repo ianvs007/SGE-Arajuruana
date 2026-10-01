@@ -10,9 +10,20 @@ namespace App\Support;
  * - Administración crea cuentas; no existe registro público.
  * - Director y Coordinadora también administran cuentas de usuario.
  * - Docente trabaja con sus cursos asignados y publica avisos (incluso generales),
- *   sin acceso a datos personales, incidencias ni cuentas de todo el colegio.
+ *   sin acceso a datos personales ni cuentas de todo el colegio.
  * - Responsable familiar consulta solo lo autorizado de sus representados.
  * - Incidencias confidenciales: solo Administración (decisión confirmada).
+ *
+ * Matriz corregida el 30/09/2026 por dirección del colegio:
+ * - Administración y Director: acceso a TODO el sistema.
+ * - Coordinadora: cuentas de mensualidades, asistencia diaria, cobro y
+ *   validación de pagos, comunicados, descarga de toda la información
+ *   económica, verificación de citaciones y de salidas/llegadas.
+ * - Docente: comunicados y citaciones a padres, VERIFICA incidencias
+ *   disciplinarias (solo lectura y solo sus cursos), asistencia diaria de
+ *   sus cursos y salidas/llegadas de sus estudiantes.
+ * - Responsable Familiar: estado de cuenta de sus hijos, informa pagos,
+ *   comunicados y citaciones, y asistencia de sus hijos.
  */
 final class Permisos
 {
@@ -35,6 +46,7 @@ final class Permisos
         'salidas.registrar',
         'salidas.ver',
         'incidencias.gestionar',
+        'incidencias.ver',        // consulta de incidencias sin editar (Docente, §30/09/2026)
         'incidencias.confidenciales',
         'citaciones.gestionar',
         'citaciones.ver',
@@ -107,26 +119,29 @@ final class Permisos
             'reportes.ver',
             'historial.ver',
         ],
-        'Director' => [
-            'usuarios.gestionar',
-            'estudiantes.ver',
-            'salidas.autorizar',
-            'salidas.ver',
-            'citaciones.gestionar',
-            'citaciones.ver',
-            'avisos.gestionar',
-            'avisos.ver',
-            'cuentas.ver',
-            'pagos.ver',
-            'aporte.cuotas.ver',     // solo lectura institucional (§5 mínimo privilegio)
-            'aporte.estado_cuenta',  // solo lectura institucional
-            'reportes.ver',
-            'historial.ver',
-        ],
+        // Acceso a TODO el sistema (decisión del colegio, 30/09/2026).
+        'Director' => self::TODOS,
         'Coordinadora' => [
             'usuarios.gestionar',
             'estudiantes.ver',
-            'reportes.ver',
+            'asistencia.gestionar',   // verifica la asistencia diaria
+            'asistencia.ver',
+            'salidas.autorizar',      // valida salidas y llegadas de estudiantes
+            'salidas.ver',
+            'citaciones.gestionar',   // verifica citaciones a padres
+            'citaciones.ver',
+            'avisos.gestionar',       // realiza comunicados
+            'avisos.ver',
+            'cuentas.gestionar',      // cuentas de las mensualidades (módulo histórico)
+            'cuentas.ver',
+            'pagos.gestionar',        // cobro de mensualidades (módulo histórico)
+            'pagos.confirmar',        // valida los pagos (módulo histórico)
+            'pagos.ver',
+            'aporte.cuotas.ver',      // estado económico institucional y deudores
+            'aporte.avisos.gestionar',// valida o rechaza avisos de pago
+            'aporte.estado_cuenta',   // estados de cuenta y lista de pagos
+            'reportes.ver',           // descarga toda la información económica
+            'historial.ver',
         ],
         'Subdirector' => [
             'estudiantes.ver',
@@ -134,16 +149,20 @@ final class Permisos
         ],
         'Docente' => [
             'estudiantes.ver',       // acotado a sus cursos asignados (Policy)
-            'asistencia.ver',        // acotado a sus cursos asignados (Policy)
-            'salidas.ver',           // acotado a sus cursos asignados (Policy)
-            'citaciones.gestionar',  // solo alumnos de sus cursos
+            'asistencia.gestionar',  // registra y verifica la asistencia de sus cursos
+            'asistencia.ver',
+            'salidas.autorizar',     // valida salidas y llegadas de SUS estudiantes
+            'salidas.ver',
+            'incidencias.ver',       // verifica casos disciplinarios (solo lectura)
+            'citaciones.gestionar',  // citaciones a padres, solo alumnos de sus cursos
             'citaciones.ver',
-            'avisos.gestionar',      // incluidos avisos generales (§5)
+            'avisos.gestionar',      // realiza comunicados, incluidos generales (§5)
             'avisos.ver',
             'historial.ver',         // acotado a alumnos de sus cursos, sin confidenciales
         ],
         'Responsable Familiar' => [
             'estudiantes.ver', // solo sus representados (validación por registro)
+            'asistencia.ver',  // verifica la asistencia de SUS hijos (solo lectura)
             'salidas.ver',     // solo las de sus representados (§7: información autorizada)
             'citaciones.ver',  // solo las dirigidas a él
             'avisos.ver',      // solo los que le competen

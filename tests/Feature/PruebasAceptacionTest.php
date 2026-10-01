@@ -222,11 +222,12 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.7 — Director y Administración autorizan; solo Administración registra
-    //         salida efectiva y retorno
+    // §20.7 — Salidas: autorización y registro efectivo según la matriz
+    //         corregida el 30/09/2026 (Director con acceso total; Docente
+    //         valida solo salidas de sus cursos asignados).
     // =====================================================================
 
-    public function test_20_7_autorizacion_de_salidas_y_registro_efectivo_por_administracion(): void
+    public function test_20_7_autorizacion_de_salidas_y_registro_efectivo_segun_matriz(): void
     {
         $director = $this->usuario('director@sge.local');
         $admin = $this->admin();
@@ -240,17 +241,22 @@ class PruebasAceptacionTest extends TestCase
         $salida = SalidaEstudiante::where('estudiante_id', $alumno->id)->latest('id')->firstOrFail();
         $this->assertSame('autorizada', $salida->estado);
 
-        // El Director NO registra la salida efectiva (permiso salidas.registrar).
+        // Matriz 30/09/2026: el Director tiene acceso a TODO el sistema,
+        // incluido registrar la salida efectiva (salidas.registrar).
         $this->actingAs($director)->post(route('salidas.salida-efectiva', $salida), [
-            'hora_salida' => '10:00', 'responsable_retiro' => 'Elena López Rivero (madre)',
-        ])->assertForbidden();
-
-        // Administración SÍ la registra.
-        $this->actingAs($admin)->post(route('salidas.salida-efectiva', $salida), [
             'hora_salida' => '10:00', 'responsable_retiro' => 'Elena López Rivero (madre)',
             'documento_responsable' => '5298341 Beni',
         ])->assertRedirect();
         $this->assertSame('salida_efectiva', $salida->fresh()->estado);
+
+        // El Docente valida salidas y llegadas SOLO de sus cursos (§6):
+        // un alumno de Primaria (curso ajeno) → 403.
+        $docente = $this->usuario('docente@sge.local');
+        $salidaAjena = SalidaEstudiante::where('estudiante_id', $alumno->id)->latest('id')->firstOrFail();
+        $this->actingAs($docente)->get(route('salidas.show', $salidaAjena))->assertForbidden();
+
+        // Administración también la gestiona (acceso total).
+        $this->actingAs($admin)->get(route('salidas.show', $salidaAjena))->assertOk();
 
         // Retorno anterior a la salida → rechazado (integridad §10).
         $this->actingAs($admin)->from(route('salidas.show', $salida))
@@ -275,18 +281,21 @@ class PruebasAceptacionTest extends TestCase
         $confidencial = Incidencia::where('confidencial', true)->firstOrFail();
         $detalle = 'solo Administración puede ver este detalle';
 
-        // Dirección y docente no gestionan incidencias (§11): 403 en el módulo.
-        foreach (['director@sge.local', 'docente@sge.local'] as $correo) {
-            $this->actingAs($this->usuario($correo))->get(route('incidencias.index'))->assertForbidden();
-        }
-
-        // El REPORTE de incidencias (accesible a dirección) la excluye (§20.8).
-        $this->actingAs($this->usuario('director@sge.local'))
-            ->get(route('reportes.incidencias'))
+        // Matriz 30/09/2026: el Docente VERIFICA incidencias en solo lectura y
+        // sin confidenciales; el responsable familiar no accede al módulo.
+        $this->actingAs($this->usuario('docente@sge.local'))
+            ->get(route('incidencias.index'))
             ->assertOk()->assertDontSee($detalle);
+        $this->actingAs($this->usuario('padre@sge.local'))
+            ->get(route('incidencias.index'))->assertForbidden();
+
+        // El REPORTE de incidencias la excluye para quien no tiene el permiso (§20.8).
+        $this->actingAs($this->usuario('docente@sge.local'))
+            ->get(route('reportes.incidencias'))
+            ->assertForbidden();
 
         // El historial del alumno tampoco la muestra a roles no autorizados.
-        $this->actingAs($this->usuario('director@sge.local'))
+        $this->actingAs($this->usuario('docente@sge.local'))
             ->get(route('historial.show', $confidencial->estudiante))
             ->assertOk()->assertDontSee($detalle);
 
@@ -328,7 +337,10 @@ class PruebasAceptacionTest extends TestCase
         $this->actingAs($docente)->get(route('respaldos.index'))->assertForbidden();       // respaldos
         $this->actingAs($docente)->get(route('reportes.aporte-curso'))->assertForbidden(); // económico
         $this->actingAs($docente)->get(route('aporte.cuotas.index'))->assertForbidden();   // cuotas
-        $this->actingAs($docente)->get(route('incidencias.index'))->assertForbidden();     // incidencias
+        // Incidencias (matriz 30/09/2026): el docente las verifica en solo
+        // lectura y SIN casos confidenciales (§11).
+        $this->actingAs($docente)->get(route('incidencias.index'))
+            ->assertOk()->assertDontSee('Caso confidencial ficticio');
 
         // El historial de un alumno SIN vínculo docente tampoco se abre por ID.
         $ajeno = Estudiante::create([

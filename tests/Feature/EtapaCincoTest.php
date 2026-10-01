@@ -452,11 +452,12 @@ class EtapaCincoTest extends TestCase
         $this->actingAs($docente)->get(route('reportes.asistencia-curso.excel', $filtro))->assertOk();
     }
 
-    public function test_roles_con_reportes_ver_sin_asistencia_ver_acceden_al_reporte_oficial(): void
+    public function test_roles_con_reportes_ver_acceden_al_reporte_oficial(): void
     {
         // Regresión de permisos: Coordinadora/Subdirector tienen `reportes.ver`
-        // pero NO `asistencia.ver`; el middleware `reportes.ver|asistencia.ver`
-        // no puede dejarlos fuera del reporte oficial de asistencia (§16).
+        // (la Coordinadora además `asistencia.ver` desde la matriz 30/09/2026);
+        // el middleware `reportes.ver|asistencia.ver` no puede dejarlos fuera
+        // del reporte oficial de asistencia (§16).
         foreach (['coordinadora@sge.local', 'subdirector@sge.local'] as $correo) {
             $usuario = $this->usuario($correo);
             $curso = Curso::where('gestion_id', Gestion::actual()->id)->firstOrFail();
@@ -503,9 +504,11 @@ class EtapaCincoTest extends TestCase
 
     // ============ §17: respaldo manual fuera de public/, por rol ============
 
-    public function test_solo_administracion_accede_a_respaldos(): void
+    public function test_respaldos_solo_para_acceso_total(): void
     {
-        $this->actingAs($this->usuario('director@sge.local'))->get(route('respaldos.index'))->assertForbidden();
+        // Matriz 30/09/2026: Administración y Director (acceso a todo el
+        // sistema) gestionan respaldos; el resto de roles, no.
+        $this->actingAs($this->usuario('director@sge.local'))->get(route('respaldos.index'))->assertOk();
         $this->actingAs($this->usuario('docente@sge.local'))->get(route('respaldos.index'))->assertForbidden();
         $this->actingAs($this->usuario('padre@sge.local'))->get(route('respaldos.index'))->assertForbidden();
 

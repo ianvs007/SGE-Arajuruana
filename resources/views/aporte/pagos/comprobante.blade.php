@@ -14,9 +14,12 @@
     <style>
         * { font-family: DejaVu Sans, sans-serif; }
         body { font-size: 11px; color: #1e293b; margin: 24px; }
-        .cabecera { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 16px; }
+        .cabecera { border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 16px; }
+        .cabecera table { width: 100%; border-collapse: collapse; }
         .cabecera h1 { font-size: 15px; margin: 0 0 4px; }
         .cabecera .institucion { font-size: 12px; font-weight: bold; }
+        /* Logo institucional pequeño, arriba a la izquierda (30/09/2026). */
+        .logo-institucional { width: 56px; height: 56px; }
         .cabecera .sub { font-size: 9px; color: #475569; margin-top: 2px; }
         .titulo-doc { text-align: center; margin: 14px 0; }
         .titulo-doc .tipo { font-size: 13px; font-weight: bold; letter-spacing: 1px; }
@@ -40,9 +43,15 @@
 </head>
 <body>
     <div class="cabecera">
-        <div class="institucion">UNIDAD EDUCATIVA ARAJURUANA FE Y ALEGRÍA</div>
-        <h1>Sistema de Gestión Educativa</h1>
-        <div class="sub">San Ignacio de Moxos, Beni — Bolivia · Documento de control interno</div>
+        <table><tr>
+            <td style="width: 64px; vertical-align: top;">@include('reportes._logo', ['base64' => true])</td>
+            <td style="vertical-align: top; text-align: center;">
+                <div class="institucion">UNIDAD EDUCATIVA ARAJURUANA FE Y ALEGRÍA</div>
+                <h1>Sistema de Gestión Educativa</h1>
+                <div class="sub">San Ignacio de Moxos, Beni — Bolivia · Documento de control interno</div>
+            </td>
+            <td style="width: 64px;"></td>
+        </tr></table>
     </div>
 
     @if ($pago->estado === 'anulado')

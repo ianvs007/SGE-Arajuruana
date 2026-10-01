@@ -220,18 +220,18 @@ class EtapaTresTest extends TestCase
         }
     }
 
-    public function test_docente_no_registra_asistencia_y_solo_consulta_sus_cursos(): void
+    public function test_docente_registra_asistencia_solo_de_sus_cursos(): void
     {
-        // §9 confirmado: Administración registra la asistencia. El docente tiene
-        // asistencia.ver acotado a sus cursos; no puede registrar nada.
+        // Matriz corregida el 30/09/2026: el docente verifica y registra la
+        // asistencia diaria, pero SOLO de sus cursos asignados (§6).
         $docente = $this->usuario('docente@sge.local');
         $gestion = Gestion::actual();
         $cursoAjeno = Curso::where('nombre', '1ro de Primaria')->where('gestion_id', $gestion->id)->firstOrFail();
         $cursoPropio = Curso::where('nombre', '3ro de Secundaria')->where('gestion_id', $gestion->id)->firstOrFail();
-        $estudiante = Estudiante::where('codigo', 'EST-2026-001')->firstOrFail();
+        $estudiante = Estudiante::where('codigo', 'EST-2026-001')->firstOrFail(); // de Primaria (ajeno)
         $lunes = now()->startOfWeek()->addDays(7)->toDateString();
 
-        // Intentar registrar → 403 por permiso.
+        // Registrar en un curso AJENO → 403 por validación de registro (§6).
         $this->actingAs($docente)->post(route('asistencias.store'), [
             'fecha' => $lunes,
             'curso_id' => $cursoAjeno->id,
@@ -239,8 +239,8 @@ class EtapaTresTest extends TestCase
             'estados' => [$estudiante->id => 'presente'],
         ])->assertForbidden();
 
-        // Pantalla de registro → 403 (requiere asistencia.gestionar).
-        $this->actingAs($docente)->get(route('asistencias.create'))->assertForbidden();
+        // La pantalla de registro de SU curso sí abre (asistencia.gestionar).
+        $this->actingAs($docente)->get(route('asistencias.create', ['curso_id' => $cursoPropio->id]))->assertOk();
 
         // §6: reporte de un curso ajeno → 403; de su curso → 200.
         $this->actingAs($docente)->get(route('asistencias.reporte', [
@@ -254,9 +254,10 @@ class EtapaTresTest extends TestCase
 
     // ================= §10 SALIDAS =================
 
-    public function test_director_autoriza_pero_no_registra_salida_efectiva(): void
+    public function test_director_autoriza_y_registra_salida_efectiva_acceso_total(): void
     {
-        // §20.7: Director y Administración autorizan; solo Administración registra.
+        // Matriz 30/09/2026: el Director tiene acceso a TODO el sistema,
+        // incluida la salida efectiva y el retorno (salidas.registrar).
         $director = $this->usuario('director@sge.local');
         $estudiante = Estudiante::where('codigo', 'EST-2026-001')->firstOrFail();
 
@@ -271,15 +272,8 @@ class EtapaTresTest extends TestCase
         $this->assertSame($director->id, $salida->autorizado_por);
         $this->assertNull($salida->hora_salida, 'Autorizar no registra hora efectiva.');
 
-        // El director NO puede registrar la salida efectiva (permiso salidas.registrar).
+        // El Director registra la salida efectiva (acceso total).
         $this->actingAs($director)->post(route('salidas.salida-efectiva', $salida), [
-            'hora_salida' => '10:00',
-            'responsable_retiro' => 'Persona Ficticia',
-        ])->assertForbidden();
-
-        // Administración sí puede.
-        $admin = $this->admin();
-        $this->actingAs($admin)->post(route('salidas.salida-efectiva', $salida), [
             'hora_salida' => '10:00',
             'responsable_retiro' => 'Persona Ficticia Demo',
             'documento_responsable' => '1234567 Beni',
@@ -288,8 +282,35 @@ class EtapaTresTest extends TestCase
         $salida->refresh();
         $this->assertSame('salida_efectiva', $salida->estado);
         $this->assertSame('10:00:00', $salida->hora_salida);
-        $this->assertSame($admin->id, $salida->salida_registrado_por);
+        $this->assertSame($director->id, $salida->salida_registrado_por);
         $this->assertDatabaseHas('auditoria', ['accion' => 'salidas.salida_efectiva']);
+    }
+
+    public function test_docente_valida_salidas_solo_de_sus_cursos(): void
+    {
+        // Matriz 30/09/2026: el Docente valida salidas y llegadas de SUS
+        // estudiantes; un alumno de otro curso → 403 por registro (§6).
+        $docente = $this->usuario('docente@sge.local'); // solo 3ro de Secundaria
+        $dePrimaria = Estudiante::where('codigo', 'EST-2026-001')->firstOrFail();
+        $deSecundaria = Estudiante::where('codigo', 'EST-2026-002')->firstOrFail();
+
+        // Autorizar salida de un alumno ajeno → 403 (validación por registro).
+        $this->actingAs($docente)->post(route('salidas.store'), [
+            'estudiante_id' => $dePrimaria->id,
+            'fecha' => now()->toDateString(),
+            'motivo' => 'salud',
+        ])->assertForbidden();
+
+        // Autorizar salida de SU alumno → permitido.
+        $this->actingAs($docente)->post(route('salidas.store'), [
+            'estudiante_id' => $deSecundaria->id,
+            'fecha' => now()->toDateString(),
+            'motivo' => 'salud',
+        ])->assertRedirect();
+
+        $salida = SalidaEstudiante::where('estudiante_id', $deSecundaria->id)->latest('id')->firstOrFail();
+        $this->assertSame('autorizada', $salida->estado);
+        $this->assertSame($docente->id, $salida->autorizado_por);
     }
 
     public function test_no_se_duplica_salida_abierta_del_mismo_alumno(): void
@@ -410,11 +431,18 @@ class EtapaTresTest extends TestCase
             ->assertOk()
             ->assertSee('No hay incidencias para los filtros seleccionados.');
 
-        // Director, docente y responsable NO gestionan incidencias (decisión confirmada §11).
-        foreach (['director@sge.local', 'docente@sge.local', 'padre@sge.local'] as $email) {
-            $this->actingAs($this->usuario($email))->get(route('incidencias.index'))->assertForbidden();
-            $this->actingAs($this->usuario($email))->get(route('incidencias.create'))->assertForbidden();
-        }
+        // Matriz corregida el 30/09/2026: el Director gestiona incidencias
+        // (acceso total); el Docente las VERIFICA en solo lectura (sin crear ni
+        // editar) y solo de sus cursos; el responsable familiar no accede.
+        $this->actingAs($this->usuario('director@sge.local'))->get(route('incidencias.index'))->assertOk();
+
+        $docente = $this->usuario('docente@sge.local');
+        $this->actingAs($docente)->get(route('incidencias.index'))->assertOk();
+        $this->actingAs($docente)->get(route('incidencias.create'))->assertForbidden();
+        $this->actingAs($docente)->get(route('incidencias.categorias'))->assertForbidden();
+
+        $this->actingAs($this->usuario('padre@sge.local'))->get(route('incidencias.index'))->assertForbidden();
+        $this->actingAs($this->usuario('padre@sge.local'))->get(route('incidencias.create'))->assertForbidden();
     }
 
     public function test_incidencia_confidencial_no_aparece_en_historial_de_otros_roles(): void
@@ -546,17 +574,21 @@ class EtapaTresTest extends TestCase
         $this->assertDatabaseHas('auditoria', ['accion' => 'citaciones.seguimiento']);
     }
 
-    public function test_reporte_de_incidencias_oculta_confidenciales_a_direccion(): void
+    public function test_reporte_de_incidencias_oculta_confidenciales_a_roles_sin_permiso(): void
     {
-        // §20.8: las confidenciales no aparecen en consultas/exportaciones no autorizadas.
-        $director = $this->usuario('director@sge.local'); // tiene reportes.ver
-        $incidenciaConfidencial = Incidencia::where('confidencial', true)->firstOrFail();
+        // §20.8: las confidenciales no aparecen en consultas/exportaciones no
+        // autorizadas. Matriz 30/09/2026: Dirección y Administración tienen
+        // acceso total (las ven); el Docente que verifica casos NO las ve.
+        $docente = $this->usuario('docente@sge.local');
 
-        $this->actingAs($director)->get(route('reportes.incidencias'))
+        $this->actingAs($docente)->get(route('incidencias.index'))
             ->assertOk()
             ->assertDontSee('Caso confidencial ficticio');
 
-        // Administración sí las ve (tiene incidencias.confidenciales).
+        // Dirección y Administración sí las ven (acceso total / incidencias.confidenciales).
+        $this->actingAs($this->usuario('director@sge.local'))->get(route('reportes.incidencias'))
+            ->assertOk()
+            ->assertSee('Caso confidencial ficticio');
         $this->actingAs($this->admin())->get(route('reportes.incidencias'))
             ->assertOk()
             ->assertSee('Caso confidencial ficticio');

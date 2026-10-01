@@ -135,14 +135,15 @@ class EtapaCuatroTest extends TestCase
         );
     }
 
-    public function test_director_y_docente_no_configuran_parametros(): void
+    public function test_docente_no_configura_parametros_y_director_si_puede(): void
     {
         $gestion = Gestion::actual();
 
+        // Matriz 30/09/2026: el Director tiene acceso a TODO el sistema.
         $this->actingAs($this->usuario('director@sge.local'))
             ->put(route('aporte.parametros.update', $gestion), [
                 'monto_mensual' => 99, 'mes_inicio' => 1, 'mes_fin' => 12, 'dia_vencimiento' => 5,
-            ])->assertForbidden();
+            ])->assertRedirect();
 
         $this->actingAs($this->usuario('docente@sge.local'))
             ->put(route('aporte.parametros.update', $gestion), [

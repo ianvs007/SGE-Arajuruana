@@ -20,12 +20,8 @@ use App\Models\SalidaEstudiante;
 use App\Models\User;
 use App\Services\AporteService;
 use App\Services\NotificacionService;
-use App\Support\Permisos;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
-use Spatie\Permission\PermissionRegistrar;
 
 /**
  * Datos de demostración ficticios (§2: contexto boliviano, datos de prueba ficticios).
@@ -35,15 +31,9 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        app()[PermissionRegistrar::class]->forgetCachedPermissions();
-
-        foreach (Permisos::TODOS as $permiso) {
-            Permission::findOrCreate($permiso);
-        }
-
-        foreach (Permisos::POR_ROL as $nombreRol => $permisos) {
-            Role::findOrCreate($nombreRol)->syncPermissions($permisos);
-        }
+        // Permisos y matriz de roles sincronizados desde un seeder dedicado,
+        // reutilizable en producción sin sembrar datos demo.
+        $this->call(RolePermissionSeeder::class);
 
         // --- Gestión académica configurable (§4) ---
         $gestion = Gestion::updateOrCreate(

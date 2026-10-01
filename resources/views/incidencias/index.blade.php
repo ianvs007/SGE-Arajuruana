@@ -3,8 +3,10 @@
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Incidencias</h2>
             <div class="flex gap-2">
-                <a href="{{ route('incidencias.categorias') }}"><x-secondary-button type="button">Categorías</x-secondary-button></a>
-                <a href="{{ route('incidencias.create') }}"><x-primary-button type="button">Nueva incidencia</x-primary-button></a>
+                @can('incidencias.gestionar')
+                    <a href="{{ route('incidencias.categorias') }}"><x-secondary-button type="button">Categorías</x-secondary-button></a>
+                    <a href="{{ route('incidencias.create') }}"><x-primary-button type="button">Nueva incidencia</x-primary-button></a>
+                @endcan
             </div>
         </div>
     </x-slot>
@@ -12,6 +14,12 @@
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.flash')
+            @if ($soloLectura ?? false)
+                <div class="mb-4 text-sm text-slate-700 bg-sky-50 border border-sky-200 rounded p-3">
+                    Consulta de casos disciplinarios de los alumnos de sus cursos asignados, en solo lectura.
+                    Los casos confidenciales no se muestran (§11).
+                </div>
+            @endif
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <form method="GET" class="mb-4 grid sm:grid-cols-4 gap-3 items-end">
                     <div>
@@ -37,10 +45,12 @@
                         </select>
                     </div>
                     <div class="flex flex-col gap-2">
-                        <label class="flex items-center gap-2 text-sm text-slate-600">
-                            <input type="checkbox" name="solo_confidenciales" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm" @checked(request()->boolean('solo_confidenciales'))>
-                            Solo confidenciales
-                        </label>
+                        @can('incidencias.confidenciales')
+                            <label class="flex items-center gap-2 text-sm text-slate-600">
+                                <input type="checkbox" name="solo_confidenciales" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm" @checked(request()->boolean('solo_confidenciales'))>
+                                Solo confidenciales
+                            </label>
+                        @endcan
                         <x-primary-button>Filtrar</x-primary-button>
                     </div>
                 </form>
@@ -74,7 +84,11 @@
                                     </td>
                                     <td class="pr-3">{{ $incidencia->registrador?->name ?? '—' }}</td>
                                     <td class="text-right whitespace-nowrap">
-                                        <a href="{{ route('incidencias.edit', $incidencia) }}" class="text-sky-700 hover:underline">Ver / Editar</a>
+                                        @if (! ($soloLectura ?? false))
+                                            <a href="{{ route('incidencias.edit', $incidencia) }}" class="text-sky-700 hover:underline">Ver / Editar</a>
+                                        @else
+                                            <span class="text-xs text-slate-400">Solo consulta</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
