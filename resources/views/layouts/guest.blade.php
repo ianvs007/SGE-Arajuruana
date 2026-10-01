@@ -15,11 +15,15 @@
     <body class="font-sans text-gray-900 antialiased">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
             <div>
-                {{-- Logo institucional en lugar del logo de Laravel (30/09/2026). --}}
+                {{-- Logo institucional en lugar del logo de Laravel (30/09/2026).
+                     Tamaño en línea: el CSS compilado no incluye estas utilidades
+                     y la imagen se mostraba a tamaño natural (564x682).
+                     136px de alto = 5 veces menos que el natural (682/5). --}}
                 <a href="/">
                     <img src="{{ asset('images/logo-arajuruana.jpg') }}"
                          alt="Unidad Educativa Arajuruana Fe y Alegría"
-                         class="h-24 w-24 object-contain mx-auto rounded-full bg-white shadow-sm" />
+                         class="mx-auto rounded-lg shadow-sm"
+                         style="height: 136px; width: auto;" />
                 </a>
             </div>
 

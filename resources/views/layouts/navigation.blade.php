@@ -3,11 +3,13 @@
         <div class="flex flex-wrap justify-between min-h-16">
             <div class="flex flex-wrap">
                 <div class="shrink-0 flex items-center gap-2">
-                    {{-- Logo institucional (30/09/2026). --}}
+                    {{-- Logo institucional (30/09/2026). Tamaño en línea: el CSS
+                         compilado no incluye estas utilidades de tamaño. --}}
                     <a href="{{ route('dashboard') }}" class="shrink-0">
                         <img src="{{ asset('images/logo-arajuruana.jpg') }}"
                              alt="U.E. Arajuruana"
-                             class="h-9 w-9 object-contain rounded-full bg-white" />
+                             class="rounded-full bg-white"
+                             style="height: 36px; width: 36px; object-fit: contain;" />
                     </a>
                     <a href="{{ route('dashboard') }}" class="font-semibold text-slate-800 text-sm sm:text-base">
                         Sistema de Gestión Educativa
