@@ -319,7 +319,7 @@ foreach ($c in $cuentas) {
 }
 Write-Host ''
 Write-Host '   Verificacion opcional (usa SQLite en memoria, no toca la base real):' -ForegroundColor Gray
-Write-Host '       php artisan test     ->  Tests: 151 passed (678 assertions)' -ForegroundColor White
+    Write-Host '       php artisan test     ->  Tests: 152 passed (687 assertions)' -ForegroundColor White
 Write-Host ''
 Write-Host '   IMPORTANTE: cambie estas contrasenas antes de un uso real y no' -ForegroundColor Yellow
 Write-Host '               exponga el servidor a internet.' -ForegroundColor Yellow
