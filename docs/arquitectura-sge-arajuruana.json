@@ -1,0 +1,208 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "SGE Arajuruana — Sistema de Gestión Educativa",
+    "quality_profile": "showcase",
+    "viewBox": [1240, 440],
+    "repository": {
+      "url": "https://github.com/ianvs007/SGE-Arajuruana",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "27e22ca2c09136ac445efb1aae031e54cd4563fe"
+    },
+    "views": [
+      {
+        "id": "ruta-usuario",
+        "label": "Ruta del usuario",
+        "focus": ["usuarios", "ui_blade", "app_laravel", "mysql"],
+        "note": "Petición HTTP renderizada en el servidor con sesión y CSRF."
+      },
+      {
+        "id": "seguridad-roles",
+        "label": "Roles y alcances",
+        "focus": ["permisos", "app_laravel", "mysql"],
+        "note": "Matriz corregida el 30/09/2026 y validación por registro."
+      },
+      {
+        "id": "documentos",
+        "label": "Documentos y respaldos",
+        "focus": ["app_laravel", "pdf", "excel", "respaldos"],
+        "note": "PDF y Excel con totales idénticos; respaldos ZIP fuera de public/."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "permisos",
+      "type": "security",
+      "label": "Permisos y roles",
+      "sublabel": "spatie + alcance por registro",
+      "pos": [680, 30],
+      "size": [200, 64],
+      "sources": [{ "path": "app/Support/Permisos.php", "label": "Matriz rol → permisos" }]
+    },
+    {
+      "id": "usuarios",
+      "type": "external",
+      "label": "Usuarios por rol",
+      "sublabel": "6 roles con alcances por registro",
+      "pos": [40, 180],
+      "size": [200, 64]
+    },
+    {
+      "id": "ui_blade",
+      "type": "frontend",
+      "label": "Interfaz Blade",
+      "sublabel": "Blade + Tailwind compilado (Vite)",
+      "pos": [360, 180],
+      "size": [200, 64],
+      "sources": [{ "path": "resources/views/layouts/navigation.blade.php", "label": "Menú por permiso" }]
+    },
+    {
+      "id": "app_laravel",
+      "type": "backend",
+      "label": "Aplicación Laravel",
+      "sublabel": "Laravel 12 · PHP 8.2",
+      "pos": [680, 180],
+      "size": [200, 64],
+      "sources": [{ "path": "routes/web.php", "label": "Rutas + middleware permission" }]
+    },
+    {
+      "id": "mysql",
+      "type": "database",
+      "label": "MySQL",
+      "sublabel": "XAMPP · datos del colegio",
+      "pos": [1000, 180],
+      "size": [200, 64],
+      "sources": [{ "path": "config/database.php", "label": "Conexión mysql" }]
+    },
+    {
+      "id": "pdf",
+      "type": "backend",
+      "label": "Reportes PDF",
+      "sublabel": "barryvdh/laravel-dompdf",
+      "pos": [360, 330],
+      "size": [200, 64],
+      "sources": [{ "path": "app/Services/ReporteService.php", "label": "Fuente única de totales" }]
+    },
+    {
+      "id": "excel",
+      "type": "backend",
+      "label": "Exportaciones Excel",
+      "sublabel": "maatwebsite/excel",
+      "pos": [680, 330],
+      "size": [200, 64],
+      "sources": [{ "path": "app/Exports/AportePorCursoExport.php", "label": "Mismos totales que pantalla" }]
+    },
+    {
+      "id": "respaldos",
+      "type": "database",
+      "label": "Respaldos",
+      "sublabel": "ZIP fuera de public/ (verificado)",
+      "pos": [1000, 330],
+      "size": [200, 64],
+      "sources": [{ "path": "app/Services/RespaldoService.php", "label": "Respaldo manual trazable" }]
+    }
+  ],
+  "connections": [
+    {
+      "id": "usuarios-a-ui",
+      "from": "usuarios",
+      "to": "ui_blade",
+      "label": "HTTP :8000",
+      "variant": "emphasis"
+    },
+    {
+      "id": "ui-a-app",
+      "from": "ui_blade",
+      "to": "app_laravel",
+      "label": "CSRF y permisos"
+    },
+    {
+      "id": "app-a-mysql",
+      "from": "app_laravel",
+      "to": "mysql",
+      "label": "Eloquent SQL"
+    },
+    {
+      "id": "app-a-permisos",
+      "from": "app_laravel",
+      "to": "permisos",
+      "label": "verifica roles",
+      "variant": "security"
+    },
+    {
+      "id": "permisos-a-mysql",
+      "from": "permisos",
+      "to": "mysql",
+      "label": "tablas spatie",
+      "fromSide": "right",
+      "toSide": "top",
+      "via": [[940, 62], [940, 150], [1100, 150]]
+    },
+    {
+      "id": "app-a-pdf",
+      "from": "app_laravel",
+      "to": "pdf",
+      "label": "reportes PDF",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "app-a-excel",
+      "from": "app_laravel",
+      "to": "excel",
+      "label": ".xlsx",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [780, 310]
+    },
+    {
+      "id": "app-a-respaldos",
+      "from": "app_laravel",
+      "to": "respaldos",
+      "label": "respaldo ZIP",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Stack",
+      "items": [
+        "Laravel 12 + PHP 8.2 + XAMPP (MySQL local)",
+        "UI Blade renderizada en servidor",
+        "Sin CDN: opera en red local"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Módulos",
+      "items": [
+        "Estudiantes, inscripciones e importación",
+        "Asistencia, salidas, incidencias, citaciones, avisos",
+        "Económico en centavos: cuotas y estados de cuenta"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Seguridad",
+      "items": [
+        "Matriz de roles corregida el 30/09/2026",
+        "Alcance por registro (docente y familia)",
+        "Anti-escalada en gestión de cuentas"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Integraciones laterales",
+      "items": [
+        "Correo SMTP opcional no bloqueante",
+        "WhatsApp manual vía wa.me"
+      ]
+    }
+  ]
+}
