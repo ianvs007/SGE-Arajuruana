@@ -2,7 +2,13 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex flex-wrap justify-between min-h-16">
             <div class="flex flex-wrap">
-                <div class="shrink-0 flex items-center">
+                <div class="shrink-0 flex items-center gap-2">
+                    {{-- Logo institucional (30/09/2026). --}}
+                    <a href="{{ route('dashboard') }}" class="shrink-0">
+                        <img src="{{ asset('images/logo-arajuruana.jpg') }}"
+                             alt="U.E. Arajuruana"
+                             class="h-9 w-9 object-contain rounded-full bg-white" />
+                    </a>
                     <a href="{{ route('dashboard') }}" class="font-semibold text-slate-800 text-sm sm:text-base">
                         Sistema de Gestión Educativa
                     </a>
@@ -28,8 +34,12 @@
                     @canany(['asistencia.gestionar', 'asistencia.ver'])
                         <x-nav-link :href="route('asistencias.index')" :active="request()->routeIs('asistencias.*')">Asistencia</x-nav-link>
                         {{-- §16: reporte oficial de asistencia (pantalla/PDF/Excel);
-                             el docente solo alcanza sus cursos (alcance por registro). --}}
-                        <x-nav-link :href="route('reportes.asistencia-curso')" :active="request()->routeIs('reportes.asistencia-curso*')">Reporte asistencia</x-nav-link>
+                             el docente solo alcanza sus cursos (alcance por registro).
+                             El responsable familiar verifica a sus hijos en el listado
+                             diario, no en el reporte institucional (30/09/2026). --}}
+                        @can('asistencia.gestionar')
+                            <x-nav-link :href="route('reportes.asistencia-curso')" :active="request()->routeIs('reportes.asistencia-curso*')">Reporte asistencia</x-nav-link>
+                        @endcan
                     @endcanany
 
                     @can('salidas.ver')
@@ -150,7 +160,9 @@
 
             @canany(['asistencia.gestionar', 'asistencia.ver'])
                 <x-responsive-nav-link :href="route('asistencias.index')" :active="request()->routeIs('asistencias.*')">Asistencia</x-responsive-nav-link>
-                <x-responsive-nav-link :href="route('reportes.asistencia-curso')" :active="request()->routeIs('reportes.asistencia-curso*')">Reporte asistencia</x-responsive-nav-link>
+                @can('asistencia.gestionar')
+                    <x-responsive-nav-link :href="route('reportes.asistencia-curso')" :active="request()->routeIs('reportes.asistencia-curso*')">Reporte asistencia</x-responsive-nav-link>
+                @endcan
             @endcanany
 
             @can('salidas.ver')

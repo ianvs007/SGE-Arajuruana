@@ -35,6 +35,12 @@ class AsistenciaController extends Controller
             ->when($fecha, fn ($q) => $q->whereDate('fecha', $fecha))
             ->when($turno, fn ($q) => $q->where('turno', $turno))
             ->when($cursoId, fn ($q) => $q->where('curso_id', $cursoId))
+            // 30/09/2026: el responsable familiar verifica SOLO la asistencia de
+            // sus representados (validación por registro, §6).
+            ->when(
+                $request->user()->esResponsableFamiliar(),
+                fn ($q) => $q->whereIn('estudiante_id', \App\Support\Alcance::estudiantes($request->user())->pluck('estudiantes.id'))
+            )
             ->orderByDesc('fecha')
             ->paginate(30)
             ->withQueryString();
@@ -208,6 +214,11 @@ class AsistenciaController extends Controller
      */
     public function reporte(Request $request): View
     {
+        // 30/09/2026: el reporte por curso agrega datos de TODA la clase; el
+        // responsable familiar verifica la asistencia de SUS hijos en el
+        // listado diario y en el historial, no en el reporte institucional (§6).
+        abort_if($request->user()->esResponsableFamiliar(), 403);
+
         $data = $request->validate([
             'curso_id' => ['required', 'exists:cursos,id'],
             'turno' => ['required', 'in:manana,tarde'],

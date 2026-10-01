@@ -237,6 +237,11 @@ class ReporteController extends Controller
     /** Validación + autorización por registro del reporte de asistencia (§6). */
     private function validarAsistencia(Request $request): array
     {
+        // 30/09/2026: el reporte por curso agrega datos de toda la clase; el
+        // responsable familiar (asistencia.ver) verifica a sus hijos en el
+        // listado diario y el historial, no en el reporte institucional (§6).
+        abort_if($request->user()->esResponsableFamiliar(), 403);
+
         $filtro = $request->validate([
             'curso_id' => ['required', 'exists:cursos,id'],
             'turno' => ['required', 'in:manana,tarde'],

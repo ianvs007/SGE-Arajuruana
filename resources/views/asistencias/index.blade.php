@@ -3,8 +3,10 @@
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Asistencias</h2>
             <div class="flex gap-2">
-                <a href="{{ route('asistencias.reporte', ['curso_id' => $cursoId, 'turno' => $turno, 'desde' => $fecha, 'hasta' => $fecha]) }}"><x-secondary-button type="button">Reporte con denominador</x-secondary-button></a>
+                {{-- El reporte por curso es institucional: el responsable familiar
+                     verifica a sus hijos en este listado diario (30/09/2026). --}}
                 @can('asistencia.gestionar')
+                    <a href="{{ route('asistencias.reporte', ['curso_id' => $cursoId, 'turno' => $turno, 'desde' => $fecha, 'hasta' => $fecha]) }}"><x-secondary-button type="button">Reporte con denominador</x-secondary-button></a>
                     <a href="{{ route('asistencias.create', ['fecha' => $fecha, 'curso_id' => $cursoId, 'turno' => $turno]) }}"><x-primary-button type="button">Registrar asistencia</x-primary-button></a>
                 @endcan
             </div>

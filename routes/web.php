@@ -117,8 +117,13 @@ Route::middleware(['auth'])->group(function () {
         Route::post('salidas/{salida}/retorno', [SalidaEstudianteController::class, 'registrarRetorno'])->name('salidas.retorno');
     });
 
+    // Consulta de incidencias sin edición: Docente verifica casos (§30/09/2026).
+    Route::middleware('permission:incidencias.gestionar|incidencias.ver')->group(function () {
+        Route::get('incidencias', [IncidenciaController::class, 'index'])->name('incidencias.index');
+    });
+
     Route::middleware('permission:incidencias.gestionar')->group(function () {
-        Route::resource('incidencias', IncidenciaController::class)->except(['show', 'destroy']);
+        Route::resource('incidencias', IncidenciaController::class)->except(['show', 'destroy', 'index']);
         // Categorías configurables (§11).
         Route::get('incidencias-categorias', [IncidenciaController::class, 'categorias'])->name('incidencias.categorias');
         Route::post('incidencias-categorias', [IncidenciaController::class, 'storeCategoria'])->name('incidencias.categorias.store');

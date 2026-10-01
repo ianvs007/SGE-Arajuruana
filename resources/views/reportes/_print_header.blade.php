@@ -25,6 +25,9 @@
         form.inline { display: inline-flex; gap: 8px; align-items: end; margin-bottom: 16px; }
         label { font-size: 13px; display: block; margin-bottom: 4px; }
         input[type="date"] { padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        /* Logo institucional pequeño, arriba a la izquierda (30/09/2026). */
+        .cabecera-reporte { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
+        .logo-institucional { width: 56px; height: 56px; object-fit: contain; }
         @media print {
             .actions, .no-print { display: none !important; }
             body { margin: 0; }
@@ -39,10 +42,15 @@
         <button type="button" onclick="window.print()">Imprimir</button>
         <a class="btn btn-secondary" href="{{ route('reportes.index') }}">Volver</a>
     </div>
-    <h1>{{ $titulo }}</h1>
-    <div class="meta">
-        Sistema de Gestión Educativa · Generado el {{ now()->format('d/m/Y H:i') }}
-        @isset($subtitulo)
-            · {{ $subtitulo }}
-        @endisset
+    <div class="cabecera-reporte">
+        @include('reportes._logo')
+        <div>
+            <h1>{{ $titulo }}</h1>
+            <div class="meta">
+                Sistema de Gestión Educativa · Generado el {{ now()->format('d/m/Y H:i') }}
+                @isset($subtitulo)
+                    · {{ $subtitulo }}
+                @endisset
+            </div>
+        </div>
     </div>

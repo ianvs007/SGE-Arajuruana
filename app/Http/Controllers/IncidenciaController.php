@@ -6,6 +6,7 @@ use App\Models\Estudiante;
 use App\Models\Incidencia;
 use App\Models\IncidenciaCategoria;
 use App\Services\AuditoriaService;
+use App\Support\Alcance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -15,7 +16,10 @@ use Illuminate\View\View;
  * Incidencias (§11).
  *
  * - Gestionadas solo por Administración (decisión confirmada): registro,
- *   consulta, modificación, seguimiento y cierre.
+ *   modificación, seguimiento y cierre.
+ * - Consulta (`incidencias.ver`, 30/09/2026): el Docente VERIFICA casos
+ *   disciplinarios de los alumnos de sus cursos asignados, en solo lectura
+ *   y sin casos confidenciales (§11).
  * - Categorías configurables: Administración las mantiene; no se inventan
  *   infracciones ni artículos en el código.
  * - Confidenciales (decisión confirmada): SOLO Administración las ve. No se
@@ -26,6 +30,10 @@ class IncidenciaController extends Controller
 {
     public function index(Request $request): View
     {
+        $user = $request->user();
+        // Quien solo verifica (Docente, 30/09/2026) consulta en solo lectura.
+        $soloLectura = ! $user->can('incidencias.gestionar');
+
         $incidencias = Incidencia::with(['estudiante', 'categoria', 'registrador'])
             ->when($request->input('estado'), fn ($q, $estado) => $q->where('estado_seguimiento', $estado))
             ->when($request->input('categoria_id'), fn ($q, $id) => $q->where('categoria_id', $id))
@@ -38,6 +46,13 @@ class IncidenciaController extends Controller
                         ->orWhere('codigo', 'like', "%{$texto}%");
                 });
             })
+            // §11: los casos confidenciales nunca se listan a quien no los gestiona.
+            ->when($soloLectura, fn ($q) => $q->where('confidencial', false))
+            // §6: el docente verifica solo los casos de alumnos de sus cursos.
+            ->when(
+                $user->esDocente() && ! $user->tieneAlcanceInstitucional(),
+                fn ($q) => $q->whereIn('estudiante_id', Alcance::estudiantes($user)->pluck('estudiantes.id'))
+            )
             ->latest('fecha')
             ->latest('id')
             ->paginate(15)
@@ -47,6 +62,7 @@ class IncidenciaController extends Controller
             'incidencias' => $incidencias,
             'estados' => Incidencia::ESTADOS,
             'categorias' => IncidenciaCategoria::where('activa', true)->orderBy('nombre')->get(),
+            'soloLectura' => $soloLectura,
         ]);
     }
 
