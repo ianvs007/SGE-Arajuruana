@@ -1,0 +1,16 @@
+---
+description: Ubicación, repositorio y flujo de trabajo del proyecto SGE-Arajuruana
+alwaysApply: true
+---
+
+# SGE-Arajuruana (Sistema de Gestión Educativa - U.E. Arajuruana)
+
+- Ruta local del proyecto: `D:\software\MisProyectos\SGE-Arajuruana`
+- Repositorio GitHub: https://github.com/ianvs007/SGE-Arajuruana (remoto `origin`, rama `main`)
+- Stack: Laravel 12, PHP 8.2, spatie/laravel-permission (roles), barryvdh/laravel-dompdf (reportes PDF), maatwebsite/excel.
+
+## Flujo de trabajo
+
+- Antes de hacer cambios importantes, crear un commit de respaldo para poder revertir.
+- Al terminar un bloque de trabajo, hacer commit con un mensaje descriptivo en español y `git push origin main` para sincronizar con GitHub.
+- Responder al usuario en español.
