@@ -1,0 +1,106 @@
+classDiagram
+    direction LR
+    class AporteParametro {
+    }
+    class Asistencia {
+    }
+    class Auditoria {
+    }
+    class Aviso {
+    }
+    class AvisoDestinatario {
+    }
+    class AvisoPago {
+    }
+    class CalendarioExcepcion {
+    }
+    class CargoCuenta {
+    }
+    class Citacion {
+    }
+    class Configuracion {
+    }
+    class CuotaAporte {
+    }
+    class Curso {
+    }
+    class Estudiante {
+    }
+    class Gestion {
+    }
+    class HorarioCurso {
+    }
+    class Incidencia {
+    }
+    class IncidenciaCategoria {
+    }
+    class Inscripcion {
+    }
+    class Pago {
+    }
+    class PagoAnulacion {
+    }
+    class PagoAplicacion {
+    }
+    class Respaldo {
+    }
+    class SalidaEstudiante {
+    }
+    class User {
+    }
+    Gestion "1" --> "0..1" AporteParametro : aporteParametro / gestion
+    Estudiante "1" --> "0..*" Asistencia : asistencias / estudiante
+    Inscripcion "0..1" --> "0..*" Asistencia : inscripcion
+    Curso "0..1" --> "0..*" Asistencia : curso
+    User "1" --> "0..*" Asistencia : registrador
+    User "0..1" --> "0..*" Asistencia : modificador
+    User "1" --> "0..*" Aviso : avisosCreados / creador
+    Curso "0..1" --> "0..*" Aviso : avisos / curso
+    Estudiante "0..1" --> "0..*" Aviso : avisos / estudiante
+    Aviso "1" --> "0..*" AvisoDestinatario : destinatarios / aviso
+    User "1" --> "0..*" AvisoDestinatario : avisosRecibidos / usuario
+    User "1" --> "0..*" AvisoPago : avisosPago / padre
+    Gestion "0..1" --> "0..*" AvisoPago : gestion
+    User "0..1" --> "0..*" AvisoPago : revisor
+    Gestion "1" --> "0..*" CalendarioExcepcion : calendarioExcepciones / gestion
+    Curso "0..1" --> "0..*" CalendarioExcepcion : curso
+    User "1" --> "0..*" CargoCuenta : cargos / padre
+    Estudiante "0..1" --> "0..*" CargoCuenta : estudiante
+    Estudiante "1" --> "0..*" Citacion : citaciones / estudiante
+    User "1" --> "0..*" Citacion : padre
+    Incidencia "0..1" --> "0..*" Citacion : citaciones / incidencia
+    User "0..1" --> "0..*" Citacion : seguimientoResponsable
+    User "1" --> "0..*" Citacion : generador
+    Gestion "1" --> "0..*" CuotaAporte : cuotas / gestion
+    Estudiante "1" --> "0..*" CuotaAporte : cuotas / estudiante
+    Inscripcion "0..1" --> "0..*" CuotaAporte : cuotas / inscripcion
+    User "0..1" --> "0..*" CuotaAporte : creador
+    Gestion "0..1" --> "0..*" Curso : cursos / gestion
+    Curso "0..1" --> "0..*" Estudiante : estudiantes / curso
+    Curso "1" --> "0..*" HorarioCurso : horarios / curso
+    Estudiante "1" --> "0..*" Incidencia : incidencias / estudiante
+    IncidenciaCategoria "0..1" --> "0..*" Incidencia : categoria
+    User "1" --> "0..*" Incidencia : registrador
+    Estudiante "1" --> "0..*" Inscripcion : inscripciones / estudiante
+    Gestion "1" --> "0..*" Inscripcion : inscripciones / gestion
+    Curso "1" --> "0..*" Inscripcion : inscripciones / curso
+    CargoCuenta "0..1" --> "0..*" Pago : pagos / cargo
+    AvisoPago "0..1" --> "0..1" Pago : pago / aviso
+    Gestion "0..1" --> "0..*" Pago : gestion
+    User "1" --> "0..*" Pago : pagos / padre
+    User "0..1" --> "0..*" Pago : confirmador
+    Pago "1" --> "0..1" PagoAnulacion : anulacion / pago
+    User "1" --> "0..*" PagoAnulacion : anulador
+    Pago "1" --> "0..*" PagoAplicacion : aplicaciones / pago
+    CuotaAporte "1" --> "0..*" PagoAplicacion : aplicaciones / cuota
+    Estudiante "1" --> "0..*" PagoAplicacion : estudiante
+    User "0..1" --> "0..*" PagoAplicacion : aplicador
+    User "0..1" --> "0..*" Respaldo : creador
+    Estudiante "1" --> "0..*" SalidaEstudiante : salidas / estudiante
+    User "1" --> "0..*" SalidaEstudiante : registrador
+    User "0..1" --> "0..*" SalidaEstudiante : autorizante
+    User "0..1" --> "0..*" SalidaEstudiante : registroSalida
+    User "0..1" --> "0..*" SalidaEstudiante : registroRetorno
+    AporteParametro "1" --> "0..*" CuotaAporte : cuotas
+    Curso "0..*" -- "0..*" User : docentes / cursosAsignados
+    Estudiante "0..*" -- "0..*" User : responsables / estudiantes

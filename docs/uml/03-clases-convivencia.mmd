@@ -1,0 +1,89 @@
+classDiagram
+    direction TB
+    class Estudiante {
+      <<externa>>
+    }
+    class User {
+      <<externa>>
+    }
+    class SalidaEstudiante {
+      +int id
+      +int estudiante_id
+      +date fecha
+      +string estado
+      +string motivo
+      +int autorizado_por
+      +datetime autorizado_en
+      +string hora_salida
+      +datetime salida_en
+      +int salida_registrado_por
+      +string responsable_retiro
+      +string documento_responsable
+      +string verificacion_retiro
+      +string hora_retorno
+      +datetime retorno_en
+      +int retorno_registrado_por
+      +string observacion
+      +int registrado_por
+      +const ESTADOS$
+      +const MOTIVOS$
+      +const ESTADOS_ABIERTOS$
+      +nombreEstado() string
+      +nombreMotivo() string
+      +estaAbierta() bool
+      +existeAbiertaPara()$ bool
+    }
+    class Incidencia {
+      +int id
+      +int estudiante_id
+      +date fecha
+      +string tipo
+      +int categoria_id
+      +bool confidencial
+      +string descripcion
+      +string medida_accion
+      +string observaciones
+      +string estado_seguimiento
+      +int registrado_por
+      +const ESTADOS$
+      +nombreEstado() string
+      +etiquetaPublica() string
+    }
+    class IncidenciaCategoria {
+      +int id
+      +string nombre
+      +string descripcion
+      +bool activa
+    }
+    class Citacion {
+      +int id
+      +int estudiante_id
+      +int padre_id
+      +date fecha
+      +string hora
+      +string motivo
+      +string descripcion
+      +int incidencia_id
+      +string estado
+      +string acuerdos
+      +string observaciones_seguimiento
+      +int seguimiento_responsable_id
+      +date fecha_revision
+      +int generado_por
+      +const ESTADOS$
+      +nombreEstado() string
+      +requiereRevision() bool
+    }
+    Estudiante "1" --> "0..*" Citacion : citaciones / estudiante
+    User "1" --> "0..*" Citacion : padre
+    Incidencia "0..1" --> "0..*" Citacion : citaciones / incidencia
+    User "0..1" --> "0..*" Citacion : seguimientoResponsable
+    User "1" --> "0..*" Citacion : generador
+    Estudiante "1" --> "0..*" Incidencia : incidencias / estudiante
+    IncidenciaCategoria "0..1" --> "0..*" Incidencia : categoria
+    User "1" --> "0..*" Incidencia : registrador
+    Estudiante "1" --> "0..*" SalidaEstudiante : salidas / estudiante
+    User "1" --> "0..*" SalidaEstudiante : registrador
+    User "0..1" --> "0..*" SalidaEstudiante : autorizante
+    User "0..1" --> "0..*" SalidaEstudiante : registroSalida
+    User "0..1" --> "0..*" SalidaEstudiante : registroRetorno

@@ -1,0 +1,97 @@
+classDiagram
+    direction TB
+    class User {
+      <<externa>>
+    }
+    class Curso {
+      <<externa>>
+    }
+    class Estudiante {
+      <<externa>>
+    }
+    class Aviso {
+      +int id
+      +string titulo
+      +string contenido
+      +string tipo
+      +string audiencia
+      +int curso_id
+      +int estudiante_id
+      +bool requiere_confirmacion
+      +datetime confirmar_antes
+      +bool publicado
+      +datetime publicado_en
+      +datetime enviado_en
+      +int creado_por
+      +const TIPOS$
+      +const AUDIENCIAS$
+      +nombreTipo() string
+      +nombreAudiencia() string
+      +descripcionAlcance() string
+      +scopeParaUsuario()$ Builder
+      +esDestinatario() bool
+      +destinatarioDe() ?AvisoDestinatario
+      +progresoConfirmacion() array
+      +pendientesDeConfirmacion() Collection
+    }
+    class AvisoDestinatario {
+      +int id
+      +int aviso_id
+      +int user_id
+      +string motivo
+      +datetime leido_en
+      +datetime confirmado_en
+      +datetime correo_enviado_en
+      +string correo_estado
+      +string correo_error
+      +const CORREO_ESTADOS$
+      +estaLeido() bool
+      +estaConfirmado() bool
+      +marcarLeido() void
+      +marcarConfirmado() void
+      +nombreEstadoCorreo() string
+    }
+    class Respaldo {
+      +int id
+      +string archivo
+      +int tamano_bytes
+      +string checksum
+      +string motor
+      +string base_datos
+      +int tablas
+      +bool incluye_env
+      +string estado
+      +string error
+      +string notas
+      +int creado_por
+      +const ESTADOS$
+      +nombreDescarga() string
+      +rutaPrivada() string
+      +tamanoLegible() string
+      +nombreEstado() string
+      +creadoEl() Carbon
+    }
+    class Auditoria {
+      +int id
+      +int user_id
+      +string accion
+      +string subject_type
+      +int subject_id
+      +array datos
+      +string ip
+      +datetime created_at
+      +usuario()
+    }
+    class Configuracion {
+      +int id
+      +string clave
+      +string valor
+      +getValor()$ ?string
+      +setValor()$ void
+    }
+    User "1" --> "0..*" Aviso : avisosCreados / creador
+    Curso "0..1" --> "0..*" Aviso : avisos / curso
+    Estudiante "0..1" --> "0..*" Aviso : avisos / estudiante
+    Aviso "1" --> "0..*" AvisoDestinatario : destinatarios / aviso
+    User "1" --> "0..*" AvisoDestinatario : avisosRecibidos / usuario
+    User "0..1" --> "0..*" Respaldo : creador

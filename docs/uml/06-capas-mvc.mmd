@@ -1,0 +1,28 @@
+flowchart TB
+    Vistas["<b>Vistas Blade</b><br/><i>resources/views</i><br/>115 plantillas"]
+    Rutas["<b>Rutas</b><br/><i>routes/web.php, routes/auth.php</i><br/>middleware auth + permisos Spatie"]
+    Controladores["<b>Controladores</b><br/><i>app/Http/Controllers</i><br/>AportePago, AporteParametro, Asistencia, Aviso<br/>AvisoPago, CargoCuenta, Citacion, CuotaAporte<br/>Curso, Dashboard, Estudiante, Gestion<br/>HistorialEstudiante, Importacion, Incidencia, Inscripcion<br/>Pago, Reporte, Respaldo, SalidaEstudiante<br/>User<br/><i>(nombres sin el sufijo Controller)</i>"]
+    Servicios["<b>Servicios</b><br/><i>app/Services</i><br/>AporteService, AuditoriaService, CalendarioAsistencia, EstadisticaAsistencia<br/>NotificacionService, ReporteService, RespaldoService"]
+    Soporte["<b>Soporte</b><br/><i>app/Support</i><br/>Alcance, Dinero, Permisos, Texto<br/>WhatsApp"]
+    Exportaciones["<b>Exportaciones</b><br/><i>app/Exports</i><br/>AportePorAlumnoExport, AportePorCursoExport, AsistenciaCursoExport, PlantillaEstudiantesExport"]
+    Importaciones["<b>Importaciones</b><br/><i>app/Imports</i><br/>EstudiantesImport"]
+    Correos["<b>Correos</b><br/><i>app/Mail</i><br/>AvisoInstitucionalMail, CitacionMail"]
+    Modelos["<b>Modelos</b><br/><i>app/Models</i><br/>AporteParametro, Asistencia, Auditoria, Aviso<br/>AvisoDestinatario, AvisoPago, CalendarioExcepcion, CargoCuenta<br/>Citacion, Configuracion, CuotaAporte, Curso<br/>Estudiante, Gestion, HorarioCurso, Incidencia<br/>IncidenciaCategoria, Inscripcion, Pago, PagoAnulacion<br/>PagoAplicacion, Respaldo, SalidaEstudiante, User"]
+    BD[("Base de datos MySQL")]
+    Rutas --> Controladores
+    Controladores -->|devuelven| Vistas
+    Modelos -->|Eloquent ORM| BD
+    Controladores -->|1 dependencia| Correos
+    Controladores -->|4 dependencias| Exportaciones
+    Controladores -->|1 dependencia| Importaciones
+    Controladores -->|80 dependencias| Modelos
+    Controladores -->|23 dependencias| Servicios
+    Controladores -->|14 dependencias| Soporte
+    Correos -->|3 dependencias| Modelos
+    Exportaciones -->|2 dependencias| Servicios
+    Exportaciones -->|4 dependencias| Soporte
+    Modelos -->|5 dependencias| Soporte
+    Servicios -->|1 dependencia| Correos
+    Servicios -->|27 dependencias| Modelos
+    Servicios -->|3 dependencias| Soporte
+    Soporte -->|5 dependencias| Modelos

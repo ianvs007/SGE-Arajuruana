@@ -1,0 +1,161 @@
+classDiagram
+    direction TB
+    class Gestion {
+      <<externa>>
+    }
+    class Estudiante {
+      <<externa>>
+    }
+    class Inscripcion {
+      <<externa>>
+    }
+    class User {
+      <<externa>>
+    }
+    class AporteParametro {
+      +int id
+      +int gestion_id
+      +decimal monto_mensual
+      +int mes_inicio
+      +int mes_fin
+      +int dia_vencimiento
+      +bool activo
+      +const MONTO_INICIAL$
+      +const MES_INICIO$
+      +const MES_FIN$
+      +const DIA_VENCIMIENTO$
+      +const NOMBRES_MES$
+      +deGestion()$ self
+      +mesesDelRango() array
+      +mesNombre() string
+      +fechaEmisionPara() string
+      +fechaVencimientoPara() string
+    }
+    class CuotaAporte {
+      +int id
+      +int gestion_id
+      +int estudiante_id
+      +int inscripcion_id
+      +int anio
+      +int mes
+      +decimal monto
+      +decimal saldo
+      +date fecha_emision
+      +date fecha_vencimiento
+      +string estado
+      +string concepto
+      +string observacion
+      +int creado_por
+      +const ESTADOS$
+      +const NOMBRES_MES$
+      +montoCentavos() int
+      +saldoCentavos() int
+      +pagadoCentavos() int
+      +estaVencida() bool
+      +nombreEstado() string
+      +nombreMes() string
+      +etiquetaPeriodo() string
+      +sincronizarEstado() void
+    }
+    class AvisoPago {
+      +int id
+      +string referencia
+      +int padre_id
+      +int gestion_id
+      +decimal monto_declarado
+      +string nota
+      +string estado
+      +datetime informado_en
+      +int revisado_por
+      +datetime revisado_en
+      +string motivo_rechazo
+      +const ESTADOS$
+      +montoCentavos() int
+      +nombreEstado() string
+      +estaPendiente() bool
+      +generarReferencia()$ string
+    }
+    class Pago {
+      +int id
+      +string referencia
+      +string comprobante_numero
+      +int cargo_id
+      +int aviso_id
+      +int gestion_id
+      +int padre_id
+      +decimal monto
+      +decimal monto_validado
+      +string estado
+      +string metodo
+      +string qr_payload
+      +string comprobante_nota
+      +string nota_responsable
+      +string whatsapp_destino
+      +datetime solicitado_en
+      +int confirmado_por
+      +datetime confirmado_en
+      +datetime validado_en
+      +string observacion_operador
+      +const ESTADOS$
+      +montoCentavos() int
+      +nombreEstado() string
+      +estaValidado() bool
+      +procesable() bool
+      +generarReferencia()$ string
+      +generarNumeroComprobante()$ string
+    }
+    class PagoAplicacion {
+      +int id
+      +int pago_id
+      +int cuota_id
+      +int estudiante_id
+      +decimal monto_aplicado
+      +datetime aplicado_en
+      +int aplicado_por
+      +montoCentavos() int
+    }
+    class PagoAnulacion {
+      +int id
+      +int pago_id
+      +int anulado_por
+      +datetime anulado_en
+      +string motivo
+      +decimal monto_original
+      +array aplicaciones_revertidas
+    }
+    class CargoCuenta {
+      +int id
+      +int padre_id
+      +int estudiante_id
+      +string concepto
+      +decimal monto
+      +date fecha_emision
+      +date fecha_vencimiento
+      +string estado
+      +string observacion
+      +string creado_por
+      +montoConfirmado() float
+      +montoPendiente() float
+    }
+    Gestion "1" --> "0..1" AporteParametro : aporteParametro / gestion
+    User "1" --> "0..*" AvisoPago : avisosPago / padre
+    Gestion "0..1" --> "0..*" AvisoPago : gestion
+    User "0..1" --> "0..*" AvisoPago : revisor
+    User "1" --> "0..*" CargoCuenta : cargos / padre
+    Estudiante "0..1" --> "0..*" CargoCuenta : estudiante
+    Gestion "1" --> "0..*" CuotaAporte : cuotas / gestion
+    Estudiante "1" --> "0..*" CuotaAporte : cuotas / estudiante
+    Inscripcion "0..1" --> "0..*" CuotaAporte : cuotas / inscripcion
+    User "0..1" --> "0..*" CuotaAporte : creador
+    CargoCuenta "0..1" --> "0..*" Pago : pagos / cargo
+    AvisoPago "0..1" --> "0..1" Pago : pago / aviso
+    Gestion "0..1" --> "0..*" Pago : gestion
+    User "1" --> "0..*" Pago : pagos / padre
+    User "0..1" --> "0..*" Pago : confirmador
+    Pago "1" --> "0..1" PagoAnulacion : anulacion / pago
+    User "1" --> "0..*" PagoAnulacion : anulador
+    Pago "1" --> "0..*" PagoAplicacion : aplicaciones / pago
+    CuotaAporte "1" --> "0..*" PagoAplicacion : aplicaciones / cuota
+    Estudiante "1" --> "0..*" PagoAplicacion : estudiante
+    User "0..1" --> "0..*" PagoAplicacion : aplicador
+    AporteParametro "1" --> "0..*" CuotaAporte : cuotas

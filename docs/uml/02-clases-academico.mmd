@@ -1,0 +1,138 @@
+classDiagram
+    direction TB
+    class Gestion {
+      +int id
+      +string nombre
+      +int anio
+      +date fecha_inicio
+      +date fecha_fin
+      +bool es_actual
+      +bool activa
+      +string observaciones
+      +actual()$ ?self
+    }
+    class Curso {
+      +int id
+      +string nombre
+      +string nivel
+      +int grado
+      +string paralelo
+      +string turno
+      +int orden
+      +int gestion_id
+      +int anio_lectivo
+      +bool activo
+      +const TURNOS$
+      +nombreTurno() string
+      +etiqueta() string
+      +estudiantesInscritos()
+    }
+    class HorarioCurso {
+      +int id
+      +int curso_id
+      +int dia_semana
+      +string turno
+      +string hora_inicio
+      +string hora_fin
+      +bool activo
+      +datetime vigente_desde
+      +datetime vigente_hasta
+      +const DIAS$
+      +const TURNOS$
+      +nombreDia() string
+      +nombreTurno() string
+    }
+    class CalendarioExcepcion {
+      +int id
+      +int gestion_id
+      +int curso_id
+      +date fecha
+      +string tipo
+      +string motivo
+      +const TIPO_SIN_CLASES$
+      +const TIPO_FERIADO$
+      +const TIPO_ACTIVIDAD_INTERNA$
+      +const TIPOS$
+      +nombreTipo() string
+    }
+    class Estudiante {
+      +int id
+      +string codigo
+      +string nombres
+      +string apellidos
+      +string documento
+      +date fecha_nacimiento
+      +string sexo
+      +int curso_id
+      +string estado
+      +string observaciones
+      +const ESTADOS$
+      +inscripcionEn() ?Inscripcion
+      +cursoActual() ?Curso
+      +padres() BelongsToMany
+      +nombreCompleto() string
+      +esRepresentadoPor() bool
+    }
+    class Inscripcion {
+      +int id
+      +int estudiante_id
+      +int gestion_id
+      +int curso_id
+      +string estado
+      +date fecha_inscripcion
+      +string observaciones
+      +asistencias()
+    }
+    class Asistencia {
+      +int id
+      +int estudiante_id
+      +int inscripcion_id
+      +int curso_id
+      +date fecha
+      +string turno
+      +string estado
+      +string observacion
+      +int registrado_por
+      +int modificado_por
+      +const ESTADOS$
+      +const TURNOS$
+      +nombreEstado() string
+      +nombreTurno() string
+    }
+    class User {
+      +int id
+      +string documento
+      +string name
+      +string email
+      +string telefono
+      +string direccion
+      +string password
+      +bool activo
+      +const ROL_RESPONSABLE$
+      +representados() BelongsToMany
+      +avisosPorConfirmar()
+      +esResponsableFamiliar() bool
+      +esAdministracion() bool
+      +rangoMaximo() int
+      +representaA() bool
+      +tieneCursoAsignado() bool
+      +esDocente() bool
+      +cursosAsignadosIds() array
+      +tieneAlcanceInstitucional() bool
+      +puedeGestionar() bool
+    }
+    Estudiante "1" --> "0..*" Asistencia : asistencias / estudiante
+    Inscripcion "0..1" --> "0..*" Asistencia : inscripcion
+    Curso "0..1" --> "0..*" Asistencia : curso
+    User "1" --> "0..*" Asistencia : registrador
+    User "0..1" --> "0..*" Asistencia : modificador
+    Gestion "1" --> "0..*" CalendarioExcepcion : calendarioExcepciones / gestion
+    Curso "0..1" --> "0..*" CalendarioExcepcion : curso
+    Gestion "0..1" --> "0..*" Curso : cursos / gestion
+    Curso "0..1" --> "0..*" Estudiante : estudiantes / curso
+    Curso "1" --> "0..*" HorarioCurso : horarios / curso
+    Estudiante "1" --> "0..*" Inscripcion : inscripciones / estudiante
+    Gestion "1" --> "0..*" Inscripcion : inscripciones / gestion
+    Curso "1" --> "0..*" Inscripcion : inscripciones / curso
+    Curso "0..*" -- "0..*" User : docentes / cursosAsignados
+    Estudiante "0..*" -- "0..*" User : responsables / estudiantes
