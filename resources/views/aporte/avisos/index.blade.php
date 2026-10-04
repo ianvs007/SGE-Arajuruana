@@ -1,7 +1,23 @@
+{{--
+    Vista: Listado de avisos de pago
+    La comparten dos tipos de usuario: el responsable familiar ve solo sus propios
+    avisos y la deuda de sus hijos; Administración ve todos los avisos para
+    validarlos o rechazarlos.
+
+    Variables que recibe del controlador:
+    - $avisos: avisos de pago paginados (ya filtrados según el usuario).
+    - $pendientes: cantidad de avisos que esperan validación.
+    - $deudaHijos: cuotas pendientes de los hijos, o null si el usuario no es familia.
+    - $estadoFiltro: estado elegido en el filtro.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Avisos de pago (§14)</h2>
+            {{--
+                Botones de acción según permisos: el responsable puede informar un pago y
+                Administración puede registrar un pago hecho directamente en ventanilla.
+            --}}
             <div class="flex gap-2">
                 @can('aporte.avisos.informar')
                     <a href="{{ route('aporte.avisos.create') }}"><x-primary-button type="button">Informar un pago</x-primary-button></a>
@@ -17,6 +33,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
             @include('partials.flash')
 
+            {{-- Alerta cuando hay avisos esperando validación, recordando que todavía no reducen la deuda --}}
             @if ($pendientes > 0)
                 <div class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded text-sm">
                     Hay <strong>{{ $pendientes }}</strong> aviso(s) pendiente(s) de validación. Un aviso pendiente
@@ -24,7 +41,11 @@
                 </div>
             @endif
 
-            {{-- Deuda actual de los representados (solo familia): orientación --}}
+            {{--
+                Resumen de la deuda actual de los hijos. Solo aparece para el responsable
+                familiar (para otros roles $deudaHijos llega como null). Agrupamos las cuotas
+                por estudiante y mostramos el total, con enlace a su estado de cuenta.
+            --}}
             @if ($deudaHijos !== null)
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-2 text-sm">Deuda actual de sus representados (gestión actual)</h3>
@@ -49,6 +70,7 @@
             @endif
 
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{-- Filtro por estado del aviso (pendiente, validado, rechazado o anulado) --}}
                 <form method="GET" class="mb-4 flex flex-wrap items-end gap-3">
                     <div>
                         <x-input-label for="estado" value="Estado" />
@@ -62,6 +84,10 @@
                     <x-primary-button>Filtrar</x-primary-button>
                 </form>
 
+                {{--
+                    Tabla de avisos. La columna "Informado por" se oculta al responsable familiar,
+                    porque todos los avisos que ve son suyos. El estado se muestra con un color.
+                --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
@@ -89,6 +115,7 @@
                                         @php($colores = ['pendiente' => 'bg-amber-100 text-amber-800', 'validado' => 'bg-emerald-100 text-emerald-800', 'rechazado' => 'bg-rose-100 text-rose-800', 'anulado' => 'bg-slate-200 text-slate-600'])
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs {{ $colores[$aviso->estado] ?? '' }}">{{ $aviso->nombreEstado() }}</span>
                                     </td>
+                                    {{-- Si el aviso está pendiente y el usuario puede gestionarlo, el enlace invita a validarlo --}}
                                     <td class="text-right whitespace-nowrap">
                                         <a href="{{ route('aporte.avisos.show', $aviso) }}" class="text-sky-700 hover:underline">
                                             {{ $aviso->estaPendiente() && auth()->user()->can('aporte.avisos.gestionar') ? 'Validar / Rechazar' : 'Ver' }}
@@ -103,6 +130,7 @@
                         </tbody>
                     </table>
                 </div>
+                {{-- Enlaces de paginación --}}
                 <div class="mt-4">{{ $avisos->links() }}</div>
             </div>
         </div>

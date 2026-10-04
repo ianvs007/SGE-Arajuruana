@@ -1,3 +1,12 @@
+{{--
+    Vista: Menú de reportes.
+    Pantalla de inicio del módulo de reportes. Agrupa los accesos en dos bloques: los reportes
+    oficiales (que se ven en pantalla y se descargan en PDF y Excel) y los listados simples
+    (páginas imprimibles desde el navegador).
+    Recibe del controlador $verEconomico, que indica si el usuario puede ver los reportes del
+    aporte económico; así los reportes de dinero solo aparecen para los roles autorizados.
+    La usa el personal con el permiso reportes.ver.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-slate-800 leading-tight">Reportes</h2>
@@ -7,7 +16,10 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
             @include('partials.flash')
 
-            {{-- §16: reportes con PDF/Excel y totales idénticos a pantalla --}}
+            {{--
+                Reportes oficiales. Se pueden ver en pantalla o descargar en PDF y Excel, y los
+                totales coinciden en los tres formatos porque salen de la misma fuente de datos.
+            --}}
             <div class="bg-white shadow-sm rounded-lg p-6 mb-6">
                 <h3 class="font-semibold text-slate-800 mb-1">Reportes oficiales (pantalla · PDF · Excel)</h3>
                 <p class="text-xs text-slate-500 mb-4">
@@ -19,6 +31,7 @@
                         <div class="font-medium text-slate-800">Asistencia por curso</div>
                         <div class="text-sm text-slate-500">Rango de fechas · denominador explícito</div>
                     </a>
+                    {{-- Los reportes del aporte económico solo se muestran si el usuario tiene permiso para ver información económica. --}}
                     @if ($verEconomico)
                         <a href="{{ route('reportes.aporte-curso') }}" class="block border border-slate-200 rounded-lg px-4 py-3 hover:bg-slate-50">
                             <div class="font-medium text-slate-800">Aporte por curso</div>
@@ -32,6 +45,7 @@
                 </div>
             </div>
 
+            {{-- Listados simples: cada enlace abre una página independiente lista para imprimir. --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <h3 class="font-semibold text-slate-800 mb-4">Listados simples</h3>
                 <div class="grid sm:grid-cols-2 gap-3">
@@ -55,6 +69,7 @@
                         <div class="font-medium text-slate-800">Citaciones</div>
                         <div class="text-sm text-slate-500">Citaciones a responsables</div>
                     </a>
+                    {{-- Los dos últimos listados corresponden al flujo económico anterior (cargos extraordinarios y pagos QR). --}}
                     <a href="{{ route('reportes.cuentas') }}" class="block border border-slate-200 rounded-lg px-4 py-3 hover:bg-slate-50">
                         <div class="font-medium text-slate-800">Cargos pendientes</div>
                         <div class="text-sm text-slate-500">Cargos extraordinarios pendientes o parciales</div>

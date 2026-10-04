@@ -1,4 +1,13 @@
+{{--
+    Vista parcial: Formulario de curso
+    Campos comunes de un curso (nombre, nivel, grado, paralelo, turno, orden y
+    si está activo). Se incluye en cursos/create y en cursos/edit.
+
+    Variables que recibe: $curso (opcional, solo al editar) y $niveles (lista de niveles).
+--}}
+{{-- Al crear no existe el curso, así que lo dejamos en null para evitar errores --}}
 @php($curso = $curso ?? null)
+{{-- Nombre y nivel del curso --}}
 <div class="grid md:grid-cols-2 gap-4">
     <div>
         <x-input-label for="nombre" value="Nombre del curso" />
@@ -16,6 +25,7 @@
         <x-input-error :messages="$errors->get('nivel')" class="mt-2" />
     </div>
 </div>
+{{-- Grado, paralelo, turno (por defecto mañana) y el orden en que aparece en las listas --}}
 <div class="grid md:grid-cols-4 gap-4">
     <div>
         <x-input-label for="grado" value="Grado" />
@@ -42,6 +52,7 @@
         <x-input-error :messages="$errors->get('orden')" class="mt-2" />
     </div>
 </div>
+{{-- Casilla para activar o desactivar el curso; un curso nuevo queda activo por defecto --}}
 <div>
     <label class="flex items-center gap-2 text-sm text-slate-700">
         <input type="checkbox" name="activo" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm"

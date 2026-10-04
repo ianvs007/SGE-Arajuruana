@@ -1,14 +1,18 @@
 {{--
-    PDF: asistencia por curso/turno/rango (§9, §16).
-    Mismos datos que la pantalla `asistencias.reporte` y que el Excel:
-    `ReporteService::asistenciaCurso()` → EstadisticaAsistencia.
-    Denominador EXPLÍCITO de días hábiles; "sin registro" ≠ "ausente" (§9).
+    Plantilla PDF: reporte de asistencia por curso, turno y rango de fechas.
+    El controlador la convierte en PDF con dompdf. Contiene los mismos datos que la pantalla
+    del reporte de asistencia y que el Excel, ya que todos se calculan con
+    ReporteService::asistenciaCurso(), que usa la clase EstadisticaAsistencia.
+    El porcentaje se calcula sobre los días hábiles del rango (un denominador explícito) y
+    "sin registro" no se cuenta como ausencia.
+    Recibe del controlador $data con: 'curso', 'turno', 'desde', 'hasta', 'filas' y 'totales'.
 --}}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="utf-8">
     <title>Asistencia — {{ $data['curso']->etiqueta() }}</title>
+    {{-- Estilos básicos que dompdf puede interpretar; la fuente DejaVu Sans muestra correctamente las tildes. --}}
     <style>
         body { font-family: DejaVu Sans, sans-serif; font-size: 10px; color: #1e293b; }
         h1 { font-size: 15px; margin: 0 0 2px; }
@@ -27,6 +31,7 @@
     </style>
 </head>
 <body>
+    {{-- Cabecera en tabla con el logo incrustado en base64, el título y los datos de la institución. --}}
     <table class="cabecera-reporte"><tr>
         <td style="width: 60px; vertical-align: top;">@include('reportes._logo', ['base64' => true])</td>
         <td style="vertical-align: top;">
@@ -35,6 +40,7 @@
         </td>
     </tr></table>
 
+    {{-- Datos del filtro: curso, turno (nombre legible tomado de Curso::TURNOS), rango de fechas y fecha de generación. --}}
     <div class="meta">
         <span><strong>Curso:</strong> {{ $data['curso']->etiqueta() }}</span>
         <span><strong>Turno:</strong> {{ $data['curso']::TURNOS[$data['turno']] ?? $data['turno'] }}</span>
@@ -42,6 +48,7 @@
         <span><strong>Generado:</strong> {{ now()->format('d/m/Y H:i') }}</span>
     </div>
 
+    {{-- Tabla principal: conteo de cada estado de asistencia por alumno y su porcentaje. --}}
     <table>
         <thead>
             <tr>
@@ -85,6 +92,7 @@
         </tfoot>
     </table>
 
+    {{-- Nota aclaratoria sobre cómo se interpretan los días hábiles y los días sin registro. --}}
     <p class="nota">
         Días hábiles = denominador explícito del rango según calendario del curso (§9):
         los días sin clases programadas no cuentan. «Sin registro» indica que había clases

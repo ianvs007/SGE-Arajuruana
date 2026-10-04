@@ -11,17 +11,32 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
- * Respaldo manual (§17).
+ * Controlador de respaldos manuales de la base de datos.
  *
- * - Solo Administración (`respaldos.gestionar`, §5: mínimo privilegio).
- * - Los archivos viven FUERA de `public/` (disco `respaldos`, sin URL): la
- *   descarga se sirve por aquí, auditada, y verifica el checksum antes de
- *   entregar el archivo.
- * - La RESTAURACIÓN es un procedimiento operativo documentado en
- *   `docs/RESPALDOS.md`; no se ejecuta desde la web (es destructiva, §3.8).
+ * Este módulo lo usa únicamente Administración (permiso "respaldos.gestionar"),
+ * siguiendo el principio de dar a cada rol solo los permisos que necesita.
+ *
+ * Los archivos de respaldo se guardan fuera de la carpeta pública, en un disco
+ * privado llamado "respaldos" que no tiene dirección web. Por eso la descarga
+ * siempre pasa por este controlador: así queda registrada en la auditoría y,
+ * antes de entregar el archivo, se verifica su checksum para asegurarnos de
+ * que no fue alterado.
+ *
+ * La restauración de un respaldo no se hace desde la web, porque es una
+ * operación destructiva (reemplaza los datos actuales). Está documentada como
+ * procedimiento manual en docs/RESPALDOS.md.
  */
 class RespaldoController extends Controller
 {
+    /**
+     * Muestra el listado de respaldos generados.
+     *
+     * Además de la lista, se muestra la ruta física donde se guardan los
+     * archivos (relativa a la carpeta del proyecto) y la ubicación de la
+     * documentación para restaurarlos.
+     *
+     * @return \Illuminate\View\View Vista con los respaldos y datos de ubicación.
+     */
     public function index(): \Illuminate\View\View
     {
         return view('respaldos.index', [
@@ -31,7 +46,15 @@ class RespaldoController extends Controller
         ]);
     }
 
-    /** Genera un respaldo manual (decisión explícita de Administración). */
+    /**
+     * Genera un respaldo manual de la base de datos.
+     *
+     * El respaldo se crea solo cuando Administración lo decide explícitamente.
+     * Se pueden agregar notas opcionales (por ejemplo, "antes de cerrar la
+     * gestión"). El trabajo pesado lo hace RespaldoService.
+     *
+     * @return RedirectResponse Regreso al listado con el resultado de la operación.
+     */
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
@@ -40,37 +63,60 @@ class RespaldoController extends Controller
 
         $respaldo = RespaldoService::generar($request->user(), $data['notas'] ?? null);
 
+        // Si el respaldo salió bien, mostramos su nombre, tamaño y cantidad de tablas copiadas.
         if ($respaldo->estado === 'ok') {
             return back()->with('success', 'Respaldo generado: '.$respaldo->nombreDescarga()
                 .' ('.$respaldo->tamanoLegible().', '.$respaldo->tablas.' tablas).');
         }
 
+        // Si falló, informamos el motivo que registró el servicio.
         return back()->with('error', 'No se pudo generar el respaldo: '.($respaldo->error ?? 'error desconocido'));
     }
 
-    /** Descarga protegida: audita y verifica integridad antes de entregar (§17). */
+    /**
+     * Descarga un archivo de respaldo de forma protegida.
+     *
+     * Antes de entregar el archivo se hacen varias comprobaciones: que el
+     * respaldo no esté marcado como fallido, que el archivo todavía exista en
+     * el disco privado y que su checksum coincida con el registrado al
+     * generarlo. Toda descarga (y todo intento con checksum incorrecto) queda
+     * registrada en la auditoría.
+     *
+     * @return StreamedResponse|RedirectResponse Archivo descargable o regreso con un error.
+     */
     public function download(Request $request, Respaldo $respaldo): StreamedResponse|RedirectResponse
     {
+        // Un respaldo fallido no se descarga, porque su contenido no es confiable.
         abort_if($respaldo->estado !== 'ok', 422, 'Este respaldo está marcado como fallido; no se descarga.');
 
+        // Puede pasar que alguien haya borrado el archivo manualmente del servidor.
         if (! Storage::disk(RespaldoService::DISCO)->exists($respaldo->archivo)) {
             return back()->with('error', 'El archivo ya no existe en el almacenamiento privado.');
         }
 
+        // Verificamos la integridad: si el checksum no coincide, el archivo pudo ser modificado,
+        // así que no lo entregamos y dejamos registrado el intento.
         if (! RespaldoService::verificar($respaldo)) {
             AuditoriaService::registrar('respaldos.descarga.checksum_fallido', $respaldo);
 
             return back()->with('error', 'El checksum no coincide: el archivo pudo alterarse. No se descargó.');
         }
 
+        // Todo está en orden: auditamos la descarga y entregamos el archivo con un nombre legible.
         AuditoriaService::registrar('respaldos.descargar', $respaldo);
 
         return Storage::disk(RespaldoService::DISCO)->download($respaldo->archivo, $respaldo->nombreDescarga());
     }
 
     /**
-     * Inactiva el registro de un respaldo (el archivo NO se borra del disco:
-     * trazabilidad §3.8; la eliminación física es una tarea operativa manual).
+     * Elimina un respaldo.
+     *
+     * Se exige indicar un motivo. El archivo físico se borra del disco
+     * privado, pero el registro en la base de datos no se elimina: se marca
+     * con estado "error" y se guarda el motivo, de modo que siempre quede la
+     * trazabilidad de qué respaldo existió, quién lo eliminó y por qué.
+     *
+     * @return RedirectResponse Regreso al listado con mensaje de éxito.
      */
     public function destroy(Request $request, Respaldo $respaldo): RedirectResponse
     {
@@ -78,11 +124,13 @@ class RespaldoController extends Controller
             'motivo' => ['required', 'string', 'max:300'],
         ]);
 
-        // Se elimina el archivo físico y el registro queda auditado.
+        // Se elimina el archivo físico (si todavía existe) y el registro queda auditado.
         if (Storage::disk(RespaldoService::DISCO)->exists($respaldo->archivo)) {
             Storage::disk(RespaldoService::DISCO)->delete($respaldo->archivo);
         }
 
+        // Registramos la eliminación en la auditoría y marcamos el registro para que ya no
+        // se pueda descargar, conservando el motivo indicado por Administración.
         AuditoriaService::registrar('respaldos.eliminar', $respaldo, ['motivo' => $data['motivo']]);
         $respaldo->update(['estado' => 'error', 'error' => 'Eliminado por Administración: '.$data['motivo']]);
 

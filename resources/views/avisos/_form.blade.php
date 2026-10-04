@@ -1,13 +1,25 @@
 {{--
-    Formulario de aviso (§13). Campos:
-    - alcance (audiencia): comunidad, responsables, docentes, administración,
-      UN curso o la familia de UN alumno (destinatarios específicos).
-    - confirmación de lectura OPCIONAL y NO BLOQUEANTE.
-    Se reutiliza en create y edit (recibe $aviso opcional y las listas).
+    Vista parcial: Formulario de aviso
+    Contiene los campos comunes para crear o editar un aviso, por eso se incluye
+    tanto en avisos/create como en avisos/edit y así evitamos repetir código.
+
+    Campos principales:
+    - Título, contenido y tipo de aviso.
+    - Destinatarios (audiencia): toda la comunidad, responsables, docentes,
+      administración, un curso en particular o la familia de un alumno.
+    - Confirmación de lectura, que es opcional y nunca bloquea el sistema.
+
+    Variables que recibe: $aviso (opcional, solo al editar), $cursos y $estudiantes.
 --}}
+{{-- Si no llega un aviso (pantalla de creación) se deja en null para no generar errores --}}
 @php($aviso = $aviso ?? null)
 
+{{--
+    Con Alpine.js guardamos la audiencia elegida para mostrar u ocultar los campos de
+    curso o de alumno según corresponda, sin recargar la página.
+--}}
 <div x-data="{ audiencia: @js(old('audiencia', $aviso?->audiencia ?? 'todos')) }" class="space-y-4">
+    {{-- Título y contenido del aviso; old() recupera lo escrito si la validación falla --}}
     <div>
         <x-input-label for="titulo" value="Título" />
         <x-text-input id="titulo" name="titulo" class="block mt-1 w-full" :value="old('titulo', $aviso?->titulo)" maxlength="180" required />
@@ -20,6 +32,7 @@
         <x-input-error :messages="$errors->get('contenido')" class="mt-2" />
     </div>
 
+    {{-- Tipo de aviso y destinatarios; ambas listas salen de constantes del modelo Aviso --}}
     <div class="grid md:grid-cols-2 gap-4">
         <div>
             <x-input-label for="tipo" value="Tipo" />
@@ -41,7 +54,7 @@
         </div>
     </div>
 
-    {{-- Alcance específico: curso (§13) --}}
+    {{-- Selector de curso: solo aparece cuando el aviso va dirigido a un curso específico --}}
     <div x-show="audiencia === 'curso'" x-cloak>
         <x-input-label for="curso_id" value="Curso" />
         <select id="curso_id" name="curso_id" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 w-full">
@@ -54,7 +67,7 @@
         <x-input-error :messages="$errors->get('curso_id')" class="mt-2" />
     </div>
 
-    {{-- Alcance específico: familia de un alumno (§13) --}}
+    {{-- Selector de alumno: solo aparece cuando el aviso es para la familia de un estudiante --}}
     <div x-show="audiencia === 'familia'" x-cloak>
         <x-input-label for="estudiante_id" value="Alumno" />
         <select id="estudiante_id" name="estudiante_id" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 w-full">
@@ -67,7 +80,10 @@
         <x-input-error :messages="$errors->get('estudiante_id')" class="mt-2" />
     </div>
 
-    {{-- Confirmación de lectura OPCIONAL (§13): nunca bloquea el sistema --}}
+    {{--
+        Opción para pedir confirmación de lectura y una fecha sugerida. Solo sirve para saber
+        quién confirmó; los destinatarios pueden seguir usando el sistema aunque no confirmen.
+    --}}
     <div class="border border-slate-200 rounded-lg p-4 bg-slate-50">
         <label class="inline-flex items-center gap-2">
             <input type="checkbox" name="requiere_confirmacion" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm"

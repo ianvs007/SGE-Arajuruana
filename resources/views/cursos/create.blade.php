@@ -1,3 +1,12 @@
+{{--
+    Vista: Nuevo curso
+    Formulario para crear un curso dentro de una gestión. Los campos vienen de
+    la vista parcial cursos/_form.
+
+    Variables que recibe del controlador:
+    - $gestion: gestión a la que pertenecerá el curso.
+    - $niveles: niveles disponibles para el formulario.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-slate-800 leading-tight">Nuevo curso — {{ $gestion->nombre }}</h2>
@@ -7,6 +16,7 @@
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             @include('partials.flash')
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{-- La gestión viaja en un campo oculto para que el curso quede asociado a ella --}}
                 <form method="POST" action="{{ route('cursos.store') }}" class="space-y-4">
                     @csrf
                     <input type="hidden" name="gestion_id" value="{{ $gestion->id }}">

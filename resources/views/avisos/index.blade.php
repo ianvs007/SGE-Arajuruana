@@ -1,7 +1,19 @@
+{{--
+    Vista: Listado de avisos institucionales
+    Muestra los comunicados de la unidad educativa (reuniones, actividades,
+    recordatorios). Cada usuario ve los avisos que le fueron dirigidos, y quien
+    tiene permiso de gestión (dirección o secretaría) puede crear y editar avisos.
+
+    Variables que recibe del controlador:
+    - $avisos: avisos paginados visibles para el usuario.
+    - $miEstado: estado de lectura y confirmación del usuario para cada aviso.
+    - $porConfirmar: avisos que piden confirmación opcional y aún no se confirmaron.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Avisos</h2>
+            {{-- Solo quien gestiona avisos puede crear uno nuevo --}}
             @can('avisos.gestionar')
                 <a href="{{ route('avisos.create') }}"><x-primary-button type="button">Nuevo aviso</x-primary-button></a>
             @endcan
@@ -12,7 +24,10 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.flash')
 
-            {{-- §13: confirmaciones pendientes — recordatorio opcional y NO bloqueante --}}
+            {{--
+                Recordatorio de los avisos que piden confirmar la lectura. Es solo informativo:
+                confirmar es opcional y no impide seguir usando el sistema.
+            --}}
             @if (isset($porConfirmar) && $porConfirmar->isNotEmpty())
                 <div class="mb-4 bg-sky-50 border border-sky-200 rounded-lg p-4">
                     <div class="font-medium text-sky-900 text-sm mb-2">
@@ -36,6 +51,12 @@
                 </div>
             @endif
 
+            {{--
+                Cada aviso se muestra como una tarjeta con su título, tipo, a quién va dirigido,
+                la fecha y el autor. A la derecha se ven etiquetas de estado (publicado o borrador,
+                leído, confirmado) y los enlaces para verlo o editarlo. El contenido se recorta a
+                240 caracteres para que el listado no quede demasiado largo.
+            --}}
             <div class="space-y-4">
                 @forelse ($avisos as $aviso)
                     @php($estado = $miEstado->get($aviso->id))
@@ -75,6 +96,7 @@
                     </div>
                 @endforelse
             </div>
+            {{-- Enlaces de paginación --}}
             <div class="mt-4">{{ $avisos->links() }}</div>
         </div>
     </div>

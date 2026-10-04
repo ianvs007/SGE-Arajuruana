@@ -1,4 +1,11 @@
+{{--
+    Parcial del perfil: eliminar cuenta.
+    Permite al usuario borrar su propia cuenta. Como es una acción irreversible, no se ejecuta
+    con un solo clic: primero se abre una ventana modal en la que debe escribir su contraseña
+    para confirmar. Se incluye desde profile.edit.
+--}}
 <section class="space-y-6">
+    {{-- Título y advertencia sobre la pérdida permanente de los datos. --}}
     <header>
         <h2 class="text-lg font-medium text-gray-900">
             {{ __('Delete Account') }}
@@ -9,11 +16,16 @@
         </p>
     </header>
 
+    {{-- Este botón no envía nada: con Alpine.js dispara el evento que abre la ventana modal de confirmación. --}}
     <x-danger-button
         x-data=""
         x-on:click.prevent="$dispatch('open-modal', 'confirm-user-deletion')"
     >{{ __('Delete Account') }}</x-danger-button>
 
+    {{--
+        Ventana modal de confirmación. Si la contraseña ingresada fue incorrecta, los errores
+        quedan en la bolsa "userDeletion" y la modal se vuelve a abrir sola para mostrarlos.
+    --}}
     <x-modal name="confirm-user-deletion" :show="$errors->userDeletion->isNotEmpty()" focusable>
         <form method="post" action="{{ route('profile.destroy') }}" class="p-6">
             @csrf
@@ -27,6 +39,7 @@
                 {{ __('Once your account is deleted, all of its resources and data will be permanently deleted. Please enter your password to confirm you would like to permanently delete your account.') }}
             </p>
 
+            {{-- Campo de contraseña para confirmar la identidad antes de eliminar. --}}
             <div class="mt-6">
                 <x-input-label for="password" value="{{ __('Password') }}" class="sr-only" />
 
@@ -41,6 +54,7 @@
                 <x-input-error :messages="$errors->userDeletion->get('password')" class="mt-2" />
             </div>
 
+            {{-- Botones para cancelar (cierra la modal) o confirmar la eliminación. --}}
             <div class="mt-6 flex justify-end">
                 <x-secondary-button x-on:click="$dispatch('close')">
                     {{ __('Cancel') }}

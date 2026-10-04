@@ -11,25 +11,41 @@ use Maatwebsite\Excel\Concerns\WithTitle;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
- * Excel económico POR ALUMNO (§14, §16): estado de cuenta resumido.
+ * Exportación a Excel del reporte económico por alumno.
  *
- * Consume `ReporteService::aportePorAlumno()`, que reutiliza
- * `AporteService::estadoDeCuenta()` — la MISMA fuente que la pantalla de estado
- * de cuenta y el PDF. Totales idénticos al centavo (§16).
- * La obligación es del alumno (§14): una fila por alumno, no por familia.
+ * Genera una hoja con el estado de cuenta resumido de cada alumno: lo
+ * emitido, lo recaudado, lo vencido y el saldo del aporte mensual. Recibe
+ * los datos de ReporteService::aportePorAlumno(), que a su vez usa
+ * AporteService::estadoDeCuenta(), la misma fuente que la pantalla de
+ * estado de cuenta y el PDF; por eso los totales coinciden al centavo.
+ *
+ * Como la obligación de pago es de cada alumno y no de la familia, el
+ * reporte tiene una fila por alumno.
+ *
+ * Se descarga desde ReporteController.
  */
 class AportePorAlumnoExport implements FromArray, WithMapping, WithStyles, WithTitle
 {
-    /** @param array{gestion: mixed, filas: \Illuminate\Support\Collection, totales: array, hoy: string} $data */
+    /**
+     * Recibe el arreglo preparado por ReporteService::aportePorAlumno().
+     *
+     * @param array{gestion: mixed, filas: \Illuminate\Support\Collection, totales: array, hoy: string} $data
+     */
     public function __construct(private array $data)
     {
     }
 
+    /**
+     * Arma las filas de la hoja: encabezado del reporte, una fila por alumno
+     * y la fila de totales.
+     */
     public function array(): array
     {
         $gestion = $this->data['gestion'];
         $t = $this->data['totales'];
 
+        // Encabezado del reporte (filas 1 a 5), una fila vacía y en la fila 7
+        // los títulos de las columnas.
         $filas = [
             ['REPORTE ECONÓMICO POR ALUMNO — APORTE MENSUAL'],
             ['Gestión', $gestion?->nombre ?? 'Todas'],
@@ -40,6 +56,8 @@ class AportePorAlumnoExport implements FromArray, WithMapping, WithStyles, WithT
             ['Código', 'Alumno', 'Curso', 'Cuotas vencidas', 'Emitido (Bs)', 'Recaudado (Bs)', 'Vencido (Bs)', 'Saldo (Bs)'],
         ];
 
+        // Una fila por alumno; los montos se convierten de centavos a número
+        // decimal solo al escribir la celda.
         foreach ($this->data['filas'] as $fila) {
             $filas[] = [
                 $fila['codigo'],
@@ -53,7 +71,7 @@ class AportePorAlumnoExport implements FromArray, WithMapping, WithStyles, WithT
             ];
         }
 
-        // Totales idénticos a pantalla/PDF (§16).
+        // Fila de totales, idéntica a la que muestran la pantalla y el PDF.
         $filas[] = [];
         $filas[] = [
             'TOTALES', '', '', $t['cuotas_vencidas'],
@@ -66,25 +84,32 @@ class AportePorAlumnoExport implements FromArray, WithMapping, WithStyles, WithT
         return $filas;
     }
 
-    /** Protege contra inyección de fórmulas (§8). */
+    /**
+     * Protege las celdas de texto contra la inyección de fórmulas; los
+     * números se dejan como números.
+     */
     public function map($fila): array
     {
         return array_map(fn ($celda) => is_numeric($celda) ? $celda : Texto::protegerFormula($celda), (array) $fila);
     }
 
+    /** Nombre de la hoja dentro del archivo Excel. */
     public function title(): string
     {
         return 'Aporte por alumno';
     }
 
+    /** Aplica el formato visual de la hoja. */
     public function styles(Worksheet $sheet): array
     {
-        // Columnas E–H: montos en Bs con dos decimales.
+        // Las columnas E a H (montos en Bs) se muestran con separador de miles
+        // y dos decimales.
         $sheet->getStyle('E8:H1000')->getNumberFormat()->setFormatCode('#,##0.00');
-        // Código como texto (conserva ceros iniciales).
+        // El código del alumno va como texto para conservar los ceros iniciales.
         $sheet->getStyle('A8:A1000')->getNumberFormat()
             ->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_TEXT);
 
+        // Título destacado en la fila 1 y títulos de columna en negrita en la fila 7.
         return [
             1 => ['font' => ['bold' => true, 'size' => 13]],
             7 => ['font' => ['bold' => true]],

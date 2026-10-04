@@ -1,3 +1,12 @@
+{{--
+    Vista: Detalle de un cargo
+    Muestra los datos de un cargo económico (concepto, padre, estudiante, monto,
+    lo que falta pagar y fechas) junto con la lista de pagos relacionados.
+
+    Variables que recibe del controlador:
+    - $cargo: el cargo con su padre, estudiante y pagos.
+--}}
+{{-- Calculamos una sola vez el monto pendiente porque se usa en varias partes de la vista --}}
 @php
     $pendiente = $cargo->montoPendiente();
 @endphp
@@ -5,6 +14,10 @@
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Detalle de cuenta</h2>
+            {{--
+                El botón para registrar un pago solo aparece si el usuario tiene permiso y el cargo
+                todavía tiene saldo (estado pendiente o parcial). Si ya está pagado no tiene sentido.
+            --}}
             <div class="flex flex-wrap gap-2">
                 @can('pagos.ver')
                     @if (in_array($cargo->estado, ['pendiente', 'parcial'], true) && $pendiente > 0)
@@ -20,6 +33,7 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
+            {{-- Datos generales del cargo --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <dl class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
                     <div>
@@ -61,6 +75,7 @@
                 </dl>
             </div>
 
+            {{-- Tabla de pagos que se registraron para este cargo, con enlace al detalle de cada uno --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <h3 class="font-semibold text-slate-800 mb-4">Pagos asociados</h3>
                 <div class="overflow-x-auto">

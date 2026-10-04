@@ -1,7 +1,19 @@
+{{--
+    Vista: Listado de incidencias.
+    Muestra los casos disciplinarios registrados, con filtros por alumno, estado y categoría.
+    Recibe del controlador:
+      - $incidencias: colección paginada de casos ya filtrados según el rol del usuario.
+      - $estados: lista de estados de seguimiento (clave => etiqueta).
+      - $categorias: categorías disponibles para el filtro.
+      - $soloLectura (opcional): verdadero cuando el usuario solo puede consultar, por ejemplo
+        un docente que ve los casos de los alumnos de sus cursos.
+    La usan dirección/regencia (gestión completa) y los docentes (solo consulta).
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Incidencias</h2>
+            {{-- Los botones de categorías y de nuevo registro solo los ve quien tiene el permiso para gestionar incidencias. --}}
             <div class="flex gap-2">
                 @can('incidencias.gestionar')
                     <a href="{{ route('incidencias.categorias') }}"><x-secondary-button type="button">Categorías</x-secondary-button></a>
@@ -14,6 +26,7 @@
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.flash')
+            {{-- Aviso que solo aparece en modo de solo lectura, para que el usuario sepa por qué no puede editar. --}}
             @if ($soloLectura ?? false)
                 <div class="mb-4 text-sm text-slate-700 bg-sky-50 border border-sky-200 rounded p-3">
                     Consulta de casos disciplinarios de los alumnos de sus cursos asignados, en solo lectura.
@@ -21,6 +34,10 @@
                 </div>
             @endif
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{--
+                    Filtros de búsqueda. Se envían por GET y request() recupera los valores elegidos,
+                    así los filtros siguen marcados después de recargar la página.
+                --}}
                 <form method="GET" class="mb-4 grid sm:grid-cols-4 gap-3 items-end">
                     <div>
                         <x-input-label for="q" value="Buscar alumno" />
@@ -45,6 +62,7 @@
                         </select>
                     </div>
                     <div class="flex flex-col gap-2">
+                        {{-- El filtro de casos confidenciales solo se ofrece a los roles autorizados para verlos. --}}
                         @can('incidencias.confidenciales')
                             <label class="flex items-center gap-2 text-sm text-slate-600">
                                 <input type="checkbox" name="solo_confidenciales" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm" @checked(request()->boolean('solo_confidenciales'))>
@@ -55,6 +73,7 @@
                     </div>
                 </form>
 
+                {{-- Tabla de incidencias. --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
@@ -68,6 +87,7 @@
                             </tr>
                         </thead>
                         <tbody>
+                            {{-- Los casos confidenciales se resaltan con un fondo violeta y una etiqueta junto al nombre. --}}
                             @forelse ($incidencias as $incidencia)
                                 <tr class="border-b border-slate-100 {{ $incidencia->confidencial ? 'bg-violet-50/60' : '' }}">
                                     <td class="py-2.5 pr-3">{{ optional($incidencia->fecha)->format('d/m/Y') }}</td>
@@ -77,12 +97,15 @@
                                             <span class="ml-1 text-[11px] bg-violet-100 text-violet-800 rounded px-1.5 py-0.5">Confidencial</span>
                                         @endif
                                     </td>
+                                    {{-- Si el caso es antiguo y no tiene categoría, mostramos el campo "tipo" que se usaba antes. --}}
                                     <td class="pr-3">{{ $incidencia->categoria?->nombre ?? $incidencia->tipo }}</td>
                                     <td class="pr-3">
+                                        {{-- Cada estado de seguimiento tiene su color: rojo abierta, ámbar en seguimiento y verde cerrada. --}}
                                         @php($colores = ['abierta' => 'bg-rose-100 text-rose-800', 'en_seguimiento' => 'bg-amber-100 text-amber-800', 'cerrada' => 'bg-emerald-100 text-emerald-800'])
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs {{ $colores[$incidencia->estado_seguimiento] ?? '' }}">{{ $incidencia->nombreEstado() }}</span>
                                     </td>
                                     <td class="pr-3">{{ $incidencia->registrador?->name ?? '—' }}</td>
+                                    {{-- En modo de solo lectura se reemplaza el enlace de edición por un texto informativo. --}}
                                     <td class="text-right whitespace-nowrap">
                                         @if (! ($soloLectura ?? false))
                                             <a href="{{ route('incidencias.edit', $incidencia) }}" class="text-sky-700 hover:underline">Ver / Editar</a>
@@ -99,6 +122,7 @@
                         </tbody>
                     </table>
                 </div>
+                {{-- Paginación del listado. --}}
                 <div class="mt-4">{{ $incidencias->links() }}</div>
             </div>
         </div>

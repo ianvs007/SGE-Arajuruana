@@ -1,9 +1,17 @@
+/* Hoja de estilos principal. Usamos Tailwind CSS, que genera las clases
+   utilitarias (colores, márgenes, tamaños, etc.) que aplicamos directamente en
+   las vistas Blade. Vite procesa este archivo junto con app.js. */
+
+/* Estilos base de Tailwind: normaliza las diferencias entre navegadores. */
 @tailwind base;
+/* Clases de componentes que definen Tailwind o sus plugins. */
 @tailwind components;
+/* Clases utilitarias que usamos en las vistas (p-4, text-sm, bg-white, etc.). */
 @tailwind utilities;
 
-/* Alpine: oculta elementos x-cloak hasta que el framework inicializa
-   (evita el parpadeo de campos condicionales en formularios, §13). */
+/* Alpine: oculta los elementos con x-cloak hasta que el framework termina de
+   iniciarse. Así se evita el parpadeo de los campos condicionales en los
+   formularios (por ejemplo, el campo de curso al elegir la audiencia de un aviso). */
 [x-cloak] {
     display: none !important;
 }

@@ -1,3 +1,18 @@
+{{--
+    Vista: Configurar curso
+    Pantalla completa de configuración de un curso. Además de editar sus datos,
+    aquí se asignan los docentes, se definen los horarios de clases y se
+    registran las jornadas sin clases (feriados, suspensiones), que son clave
+    para que el control de asistencia no cuente ausencias en días sin clases.
+
+    Variables que recibe del controlador:
+    - $curso: el curso con sus docentes asignados.
+    - $gestion: gestión a la que pertenece el curso.
+    - $niveles: niveles para el formulario de datos.
+    - $docentesDisponibles: docentes que se pueden asignar.
+    - $horarios: horarios de clases del curso.
+    - $excepciones: jornadas sin clases del calendario.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
@@ -10,7 +25,7 @@
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
-            {{-- Datos del curso --}}
+            {{-- Datos básicos del curso, usando el mismo formulario parcial que la creación --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <h3 class="font-semibold text-slate-800 mb-4">Datos del curso</h3>
                 <form method="POST" action="{{ route('cursos.update', $curso) }}" class="space-y-4">
@@ -22,7 +37,11 @@
             </div>
 
             <div class="grid lg:grid-cols-2 gap-6">
-                {{-- Docentes asignados (§5) --}}
+                {{--
+                    Docentes asignados al curso, con su rol. Cada uno se puede retirar (con confirmación)
+                    y abajo hay un selector para agregar otro; con @unless se omiten los que ya están
+                    asignados para no duplicarlos.
+                --}}
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-3">Docentes asignados</h3>
                     <ul class="divide-y divide-slate-100 mb-4">
@@ -55,7 +74,11 @@
                     </form>
                 </div>
 
-                {{-- Horarios (§4: vigentes desde su fecha; no reinterpretan el pasado) --}}
+                {{--
+                    Horarios de clases por día y turno. Los cambios valen desde que se hacen, así no
+                    se alteran las asistencias que ya se registraron con el horario anterior.
+                    Debajo de la lista está el formulario para agregar un horario nuevo.
+                --}}
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-3">Horarios de clases</h3>
                     <p class="text-xs text-slate-500 mb-3">Los cambios de horario rigen hacia adelante: no reinterpretan asistencias ya registradas.</p>
@@ -109,7 +132,11 @@
                 </div>
             </div>
 
-            {{-- Calendario (§4, §9) --}}
+            {{--
+                Calendario de jornadas sin clases (feriados, suspensiones, etc.). Estas fechas no
+                generan ausencias. Cada jornada puede aplicar solo a este curso o a toda la gestión,
+                y al final está el formulario para registrar una nueva.
+            --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <h3 class="font-semibold text-slate-800 mb-3">Calendario — jornadas sin clases</h3>
                 <p class="text-xs text-slate-500 mb-3">

@@ -1,7 +1,18 @@
+{{--
+    Vista: Detalle de un pago
+    Muestra un pago validado con sus datos, la forma en que se distribuyó entre
+    las cuotas de los hijos y un código QR de demostración. Desde aquí se puede
+    descargar el comprobante en PDF y, si se tiene permiso, anular el pago.
+
+    Variables que recibe del controlador:
+    - $pago: el pago con sus relaciones (padre, confirmador, aviso, aplicaciones, anulación).
+    - $qrSvg: código QR en formato SVG generado en el servidor.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Pago {{ $pago->comprobante_numero }}</h2>
+            {{-- Botones para abrir el comprobante PDF en otra pestaña y para volver al listado --}}
             <div class="flex gap-2">
                 <a href="{{ route('aporte.pagos.comprobante', $pago) }}" target="_blank"><x-secondary-button type="button">Comprobante PDF</x-secondary-button></a>
                 <a href="{{ route('aporte.pagos.index') }}"><x-secondary-button type="button">Volver</x-secondary-button></a>
@@ -13,6 +24,7 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
+            {{-- Aviso destacado cuando el pago fue anulado, con quién lo anuló, cuándo y por qué --}}
             @if ($pago->estado === 'anulado')
                 <div class="bg-rose-50 border border-rose-200 text-rose-800 px-4 py-3 rounded text-sm">
                     <strong>Pago anulado.</strong>
@@ -23,7 +35,10 @@
 
             <div class="grid lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 space-y-6">
-                    {{-- Datos del pago --}}
+                    {{--
+                        Datos generales del pago: comprobante, responsable, monto, quién lo validó y
+                        su origen (un aviso de pago o un registro directo en ventanilla).
+                    --}}
                     <div class="bg-white shadow-sm rounded-lg p-6">
                         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                             <h3 class="font-semibold text-slate-800">Datos del pago</h3>
@@ -62,6 +77,7 @@
                                     @endif
                                 </dd>
                             </div>
+                            {{-- La nota del responsable y la observación del operador solo se muestran si existen --}}
                             @if ($pago->nota_responsable)
                                 <div class="sm:col-span-2">
                                     <dt class="text-slate-500">Nota del responsable</dt>
@@ -80,7 +96,10 @@
                         </p>
                     </div>
 
-                    {{-- Distribución (§20.12): entre hijos y meses --}}
+                    {{--
+                        Distribución del pago entre los hijos y los meses. Mientras recorremos las
+                        aplicaciones vamos sumando lo aplicado en $sumaAplicada para mostrar el total.
+                    --}}
                     <div class="bg-white shadow-sm rounded-lg p-6">
                         <h3 class="font-semibold text-slate-800 mb-3">Distribución del pago</h3>
                         <div class="overflow-x-auto -mx-6 px-6 sm:mx-0 sm:px-0">
@@ -114,6 +133,7 @@
                             </tfoot>
                         </table>
                         </div>
+                        {{-- Control de consistencia: si la suma no coincide con el monto validado se advierte --}}
                         @if ($sumaAplicada !== $pago->montoCentavos())
                             <p class="mt-2 text-xs text-rose-600">Inconsistencia: la distribución no suma el monto validado. Contacte a Administración.</p>
                         @endif
@@ -121,7 +141,10 @@
                 </div>
 
                 <div class="space-y-6">
-                    {{-- QR claramente simulado (§20.16) --}}
+                    {{--
+                        Código QR de demostración. Se imprime sin escapar porque es un SVG generado por
+                        el propio sistema. Se aclara bien que es una simulación y que no acredita pagos.
+                    --}}
                     <div class="bg-white shadow-sm rounded-lg p-6 text-center">
                         <h3 class="font-semibold text-slate-800 mb-1 text-sm">QR de demostración</h3>
                         <div class="inline-block border-2 border-dashed border-amber-400 rounded-lg p-2 bg-amber-50/50">
@@ -134,7 +157,11 @@
                         </p>
                     </div>
 
-                    {{-- Anulación trazable (§14): solo Administración --}}
+                    {{--
+                        Formulario para anular el pago. Solo lo ve quien tiene el permiso de anular pagos
+                        (Administración) y solo si el pago sigue validado. Se pide un motivo obligatorio
+                        porque la anulación queda registrada y no se borra nada del historial.
+                    --}}
                     @can('aporte.pagos.anular')
                         @if ($pago->estaValidado())
                             <div class="bg-white shadow-sm rounded-lg p-6">

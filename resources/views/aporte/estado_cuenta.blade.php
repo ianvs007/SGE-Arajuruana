@@ -1,7 +1,21 @@
+{{--
+    Vista: Estado de cuenta de un estudiante
+    Muestra las cuotas del aporte de un solo estudiante en una gestión: cuánto
+    se emitió, cuánto se pagó, el saldo y lo vencido, además de los pagos que
+    se aplicaron a cada cuota. La consultan Administración y el responsable
+    familiar (este último solo para sus propios hijos).
+
+    Variables que recibe del controlador:
+    - $estudiante: el estudiante consultado.
+    - $cuotas: cuotas del estudiante con sus aplicaciones de pago.
+    - $totales: emitido, pagado, saldo y vencido (en centavos).
+    - $gestion y $gestiones: gestión actual y lista para el selector.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Estado de cuenta — {{ $estudiante->nombreCompleto() }}</h2>
+            {{-- El botón Volver lleva al panel si es familia, o al listado de cuotas si es personal administrativo --}}
             <a href="{{ auth()->user()->esResponsableFamiliar() ? route('dashboard') : route('aporte.cuotas.index') }}">
                 <x-secondary-button type="button">Volver</x-secondary-button>
             </a>
@@ -12,6 +26,7 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-4">
             @include('partials.flash')
 
+            {{-- Selector de gestión que recarga la página al cambiar de opción --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <form method="GET" class="flex flex-wrap items-end gap-3">
                     <div>
@@ -29,7 +44,7 @@
                 </form>
             </div>
 
-            {{-- Totales: mismos números que usan reportes PDF/Excel (centavos, §14) --}}
+            {{-- Totales del estudiante; se calculan en centavos igual que en los reportes PDF y Excel --}}
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-white shadow-sm rounded-lg p-4">
                     <div class="text-xs text-slate-500">Emitido</div>
@@ -51,6 +66,11 @@
 
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <h3 class="font-semibold text-slate-800 mb-3">Cuotas del periodo</h3>
+                {{--
+                    Tabla de cuotas. Las vencidas se resaltan en rojo y las exentas no muestran saldo.
+                    En la última columna se listan los comprobantes de los pagos validados aplicados
+                    a cada cuota, o el motivo si la cuota fue eximida.
+                --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
@@ -108,6 +128,7 @@
                     </table>
                 </div>
 
+                {{-- Acceso directo para que el responsable familiar informe un pago desde su estado de cuenta --}}
                 @can('aporte.avisos.informar')
                     <div class="mt-4 flex flex-wrap gap-2 items-center">
                         <a href="{{ route('aporte.avisos.create') }}"><x-primary-button type="button">Informar un pago</x-primary-button></a>

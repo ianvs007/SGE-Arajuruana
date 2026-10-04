@@ -1,3 +1,15 @@
+{{--
+    Vista: Parámetros del aporte
+    Aquí Administración configura, para cada gestión, cuánto se cobra de aporte
+    mensual, entre qué meses y qué día vence cada cuota. Decidimos que estos
+    valores se guarden en la base de datos y no en el código, para que puedan
+    cambiar de un año a otro sin tocar el sistema.
+
+    Variables que recibe del controlador:
+    - $gestiones: lista de gestiones para el selector.
+    - $gestion: gestión elegida (puede ser null si no hay ninguna).
+    - $parametro: parámetros actuales de esa gestión.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-slate-800 leading-tight">Parámetros de aporte (§14)</h2>
@@ -7,6 +19,7 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
+            {{-- Selector de gestión: al cambiarlo, el formulario se envía solo para recargar los parámetros --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <form method="GET" class="flex items-end gap-3">
                     <div class="flex-1">
@@ -22,6 +35,7 @@
                 </form>
             </div>
 
+            {{-- El formulario solo se muestra si existe alguna gestión; si no, se invita a crear una --}}
             @if ($gestion)
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-1">Aporte mensual — {{ $gestion->nombre }}</h3>
@@ -31,6 +45,10 @@
                         ni reescribe pagos validados; solo afecta a cuotas que aún no se generaron.
                     </p>
 
+                    {{--
+                        Formulario de parámetros. Se envía con método PUT porque actualiza un registro
+                        existente. Cambiar estos valores no recalcula cuotas ya emitidas.
+                    --}}
                     <form method="POST" action="{{ route('aporte.parametros.update', $gestion) }}" class="space-y-4">
                         @csrf
                         @method('PUT')
@@ -49,6 +67,7 @@
                                 <p class="text-xs text-slate-500 mt-1">Si el mes es más corto, vence el último día del mes.</p>
                                 <x-input-error :messages="$errors->get('dia_vencimiento')" class="mt-2" />
                             </div>
+                            {{-- Meses inicial y final del cobro; las opciones se generan con un bucle del 1 al 12 --}}
                             <div>
                                 <x-input-label for="mes_inicio" value="Mes inicial" />
                                 <select id="mes_inicio" name="mes_inicio" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 w-full">
@@ -73,6 +92,7 @@
                             </div>
                         </div>
 
+                        {{-- Casilla para activar o desactivar los parámetros de esta gestión --}}
                         <label class="flex items-center gap-2 text-sm text-slate-600">
                             <input type="checkbox" name="activo" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm"
                                 @checked(old('activo', $parametro->activo ?? true))>

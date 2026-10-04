@@ -1,7 +1,17 @@
+{{--
+    Vista: Listado de cuentas (cargos)
+    Muestra los cargos económicos registrados a los padres o responsables, por
+    ejemplo cobros por algún concepto puntual, con su monto y estado. La usa el
+    personal administrativo para llevar el control de lo que se debe cobrar.
+
+    Variables que recibe del controlador:
+    - $cargos: cargos paginados con su padre y estudiante.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Cuentas / cargos</h2>
+            {{-- Solo quien tiene permiso de gestionar cuentas puede crear un cargo nuevo --}}
             @can('cuentas.gestionar')
                 <a href="{{ route('cuentas.create') }}"><x-primary-button type="button">Nuevo cargo</x-primary-button></a>
             @endcan
@@ -12,6 +22,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.flash')
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{-- Tabla de cargos con fecha, concepto, padre, estudiante, monto en bolivianos y estado --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
@@ -46,6 +57,7 @@
                         </tbody>
                     </table>
                 </div>
+                {{-- Enlaces de paginación --}}
                 <div class="mt-4">{{ $cargos->links() }}</div>
             </div>
         </div>

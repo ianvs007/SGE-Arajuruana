@@ -1,7 +1,18 @@
+{{--
+    Vista: Ficha del estudiante
+    Muestra los datos generales de un estudiante y un resumen de sus últimos
+    registros: asistencias, salidas, incidencias y citaciones. Es como una
+    ficha rápida para tener toda la información a la vista en un solo lugar.
+
+    Variables que recibe del controlador:
+    - $estudiante: el estudiante con sus relaciones cargadas (curso, padres,
+      asistencias, salidas, incidencias y citaciones recientes).
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">{{ $estudiante->nombreCompleto() }}</h2>
+            {{-- Botones: ver el historial completo, editar (solo con permiso de gestión) y volver --}}
             <div class="flex flex-wrap gap-2">
                 <a href="{{ route('historial.show', $estudiante) }}"><x-primary-button type="button">Ver historial</x-primary-button></a>
                 @can('estudiantes.gestionar')
@@ -16,6 +27,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
+            {{-- Datos personales y académicos; si un dato no existe se muestra un guion --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <h3 class="font-semibold text-slate-800 mb-4">Datos generales</h3>
                 <dl class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm">
@@ -54,7 +66,12 @@
                 </dl>
             </div>
 
+            {{--
+                Resumen en cuatro tarjetas con los últimos registros del estudiante. Cada lista usa
+                @forelse para mostrar "Sin registros" cuando todavía no hay datos.
+            --}}
             <div class="grid lg:grid-cols-2 gap-6">
+                {{-- Últimas asistencias con su fecha y estado --}}
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-3">Últimas asistencias</h3>
                     <ul class="text-sm space-y-2">
@@ -68,6 +85,7 @@
                         @endforelse
                     </ul>
                 </div>
+                {{-- Últimas salidas anticipadas del colegio y su motivo --}}
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-3">Últimas salidas</h3>
                     <ul class="text-sm space-y-2">
@@ -81,6 +99,7 @@
                         @endforelse
                     </ul>
                 </div>
+                {{-- Últimas incidencias con su tipo y estado de seguimiento --}}
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-3">Últimas incidencias</h3>
                     <ul class="text-sm space-y-2">
@@ -97,6 +116,7 @@
                         @endforelse
                     </ul>
                 </div>
+                {{-- Últimas citaciones a los responsables, con su estado y motivo --}}
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-3">Últimas citaciones</h3>
                     <ul class="text-sm space-y-2">

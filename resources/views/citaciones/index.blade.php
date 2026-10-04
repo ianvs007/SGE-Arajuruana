@@ -1,7 +1,23 @@
+{{--
+    Vista: Listado de citaciones
+    Muestra las citaciones a los responsables familiares (llamados a reunión por
+    conducta, rendimiento u otros motivos). La dirección y los docentes con
+    permiso pueden crear y editar citaciones; el responsable familiar solo ve
+    las que le corresponden.
+
+    Variables que recibe del controlador:
+    - $citaciones: citaciones paginadas.
+    - $estados: lista de estados posibles para el filtro.
+    - $pendientesRevision: cantidad de citaciones cuya fecha de revisión ya pasó.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Citaciones</h2>
+            {{--
+                Indicador de revisiones vencidas, para que no se olvide dar seguimiento a los
+                acuerdos, y botón de nueva citación solo para quien tiene permiso de gestión.
+            --}}
             <div class="flex items-center gap-3">
                 @if ($pendientesRevision > 0)
                     <span class="text-sm bg-rose-100 text-rose-800 rounded-full px-3 py-1">{{ $pendientesRevision }} revisión(es) vencida(s)</span>
@@ -17,6 +33,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.flash')
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{-- Filtros: por estado y, opcionalmente, solo las que tienen la revisión vencida --}}
                 <form method="GET" class="mb-4 grid sm:grid-cols-3 gap-3 items-end">
                     <div>
                         <x-input-label for="estado" value="Estado" />
@@ -36,6 +53,10 @@
                     <x-primary-button>Filtrar</x-primary-button>
                 </form>
 
+                {{--
+                    Tabla de citaciones. Cada estado tiene su color y, si la fecha de revisión ya
+                    venció, se marca en rojo con un símbolo de advertencia.
+                --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
@@ -76,6 +97,7 @@
                                         @endif
                                     </td>
                                     <td class="pr-3">{{ $citacion->generador?->name ?? '—' }}</td>
+                                    {{-- Ver está disponible para todos; Editar solo para quien gestiona citaciones --}}
                                     <td class="text-right whitespace-nowrap">
                                         <a href="{{ route('citaciones.show', $citacion) }}" class="text-sky-700 hover:underline">Ver</a>
                                         @can('citaciones.gestionar')
@@ -91,6 +113,7 @@
                         </tbody>
                     </table>
                 </div>
+                {{-- Enlaces de paginación --}}
                 <div class="mt-4">{{ $citaciones->links() }}</div>
             </div>
         </div>

@@ -1,3 +1,12 @@
+{{--
+    Vista: Nuevo cargo
+    Formulario para registrar un cargo económico a un padre o responsable. El
+    cargo puede asociarse a un estudiante en particular, aunque es opcional.
+
+    Variables que recibe del controlador:
+    - $padres: usuarios responsables a los que se puede asignar el cargo.
+    - $estudiantes: estudiantes para asociar el cargo, si corresponde.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-slate-800 leading-tight">Nuevo cargo</h2>
@@ -8,6 +17,7 @@
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <form method="POST" action="{{ route('cuentas.store') }}" class="space-y-4">
                     @csrf
+                    {{-- A quién se le asigna el cargo y, opcionalmente, a qué estudiante corresponde --}}
                     <div>
                         <x-input-label for="padre_id" value="Padre / responsable" />
                         <select id="padre_id" name="padre_id" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 w-full" required>
@@ -33,6 +43,7 @@
                         <x-text-input id="concepto" name="concepto" class="block mt-1 w-full" :value="old('concepto')" required />
                         <x-input-error :messages="$errors->get('concepto')" class="mt-2" />
                     </div>
+                    {{-- Monto y fechas; la fecha de emisión se propone con el día actual --}}
                     <div class="grid md:grid-cols-3 gap-4">
                         <div>
                             <x-input-label for="monto" value="Monto (Bs.)" />
@@ -55,6 +66,7 @@
                         <textarea id="observacion" name="observacion" rows="3" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">{{ old('observacion') }}</textarea>
                         <x-input-error :messages="$errors->get('observacion')" class="mt-2" />
                     </div>
+                    {{-- Botones para guardar el cargo o volver al listado --}}
                     <div class="flex gap-3 pt-2">
                         <x-primary-button>Guardar</x-primary-button>
                         <a href="{{ route('cuentas.index') }}"><x-secondary-button type="button">Cancelar</x-secondary-button></a>

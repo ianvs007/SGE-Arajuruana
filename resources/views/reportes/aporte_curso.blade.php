@@ -1,3 +1,13 @@
+{{--
+    Vista: Reporte de aporte por curso (en pantalla).
+    Resume la situación del aporte agrupada por curso: cuántos alumnos tiene, cuántas cuotas
+    vencidas acumula y los montos emitidos, recaudados, vencidos y el saldo. Permite descargar
+    el mismo reporte en PDF o Excel.
+    Recibe del controlador:
+      - $gestiones y $gestion: lista de gestiones y la seleccionada.
+      - $data: arreglo con 'filas' (una por curso), 'totales' y 'hoy' (fecha de corte).
+    Lo usa el personal administrativo con acceso a reportes.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
@@ -10,6 +20,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
             @include('partials.flash')
 
+            {{-- Selector de gestión y botones de descarga en PDF y Excel con la misma gestión elegida. --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <form method="GET" action="{{ route('reportes.aporte-curso') }}" class="flex flex-wrap gap-3 items-end">
                     <div>
@@ -27,13 +38,17 @@
                     <a href="{{ route('reportes.aporte-curso.excel', ['gestion' => $gestion?->id]) }}">
                         <x-secondary-button type="button">Descargar Excel</x-secondary-button>
                     </a>
+                    {{-- Fecha de corte del reporte. --}}
                     <span class="text-xs text-slate-500 self-center">
                         Corte: {{ \Illuminate\Support\Carbon::parse($data['hoy'])->format('d/m/Y') }}
                     </span>
                 </form>
             </div>
 
-            {{-- Tarjetas de totales — los MISMOS valores del PDF/Excel (§16) --}}
+            {{--
+                Tarjetas de totales. Son los mismos valores que aparecen en el PDF y en el Excel,
+                ya que los tres formatos usan el mismo arreglo $data calculado en el controlador.
+            --}}
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
                 <div class="bg-white shadow-sm rounded-lg p-4">
                     <div class="text-xs text-slate-500">Emitido</div>
@@ -53,6 +68,7 @@
                 </div>
             </div>
 
+            {{-- Tabla de detalle, una fila por curso, con la fila de totales al pie. --}}
             <div class="bg-white shadow-sm rounded-lg p-6 overflow-x-auto">
                 <table class="min-w-full text-sm">
                     <thead>
@@ -94,6 +110,7 @@
                     </tfoot>
                 </table>
 
+                {{-- Nota que explica cómo se calculan los montos del reporte. --}}
                 <p class="text-xs text-slate-500 mt-4">
                     Las cuotas exentas no cuentan. Vencido = saldo con fecha de vencimiento anterior al corte.
                     Montos en centavos enteros (§14); PDF y Excel usan esta misma fuente (§16).

@@ -1,3 +1,15 @@
+{{--
+    Vista: Detalle de un aviso de pago
+    Muestra toda la información de un aviso: estado, monto declarado, nota del
+    responsable y quién lo revisó. Desde aquí Administración valida el aviso
+    repartiendo el monto entre las cuotas, o lo rechaza indicando el motivo.
+    El responsable familiar puede anular su propio aviso mientras siga pendiente.
+
+    Variables que recibe del controlador:
+    - $aviso: el aviso de pago con sus relaciones (padre, revisor, pago).
+    - $cuotasPorAlumno: cuotas con saldo de los hijos del responsable, agrupadas
+      por estudiante; se usan en el formulario de validación.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
@@ -10,7 +22,10 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
-            {{-- Encabezado con estado --}}
+            {{--
+                Encabezado del aviso: estado con su color, monto declarado y los datos
+                principales. Definimos un arreglo de colores para cada estado posible.
+            --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 @php($colores = ['pendiente' => 'bg-amber-100 text-amber-800', 'validado' => 'bg-emerald-100 text-emerald-800', 'rechazado' => 'bg-rose-100 text-rose-800', 'anulado' => 'bg-slate-200 text-slate-600'])
                 <div class="flex flex-wrap items-center justify-between gap-3">
@@ -37,12 +52,14 @@
                         <dt class="text-slate-500">Nota escrita del responsable</dt>
                         <dd class="font-medium whitespace-pre-wrap">{{ $aviso->nota ?: '— (sin nota) —' }}</dd>
                     </div>
+                    {{-- El motivo solo tiene sentido si el aviso fue rechazado --}}
                     @if ($aviso->estado === 'rechazado')
                         <div class="sm:col-span-2">
                             <dt class="text-slate-500">Motivo del rechazo</dt>
                             <dd class="font-medium text-rose-700">{{ $aviso->motivo_rechazo }}</dd>
                         </div>
                     @endif
+                    {{-- Datos de la persona de Administración que revisó el aviso, si ya fue revisado --}}
                     @if ($aviso->revisado_por)
                         <div class="sm:col-span-2">
                             <dt class="text-slate-500">Revisado por</dt>
@@ -51,6 +68,7 @@
                     @endif
                 </dl>
 
+                {{-- Si el aviso ya generó un pago validado, mostramos el enlace a su comprobante interno --}}
                 @if ($aviso->pago && $aviso->pago->estaValidado())
                     <div class="mt-4 bg-emerald-50 border border-emerald-200 rounded p-3 text-sm">
                         Pago validado · comprobante interno
@@ -59,6 +77,10 @@
                     </div>
                 @endif
 
+                {{--
+                    Botón para anular el aviso. Solo lo ve el mismo responsable que lo informó y
+                    solo mientras esté pendiente; una vez revisado ya no se puede anular.
+                --}}
                 @if ($aviso->estaPendiente() && auth()->user()->can('aporte.avisos.informar') && $aviso->padre_id === auth()->id())
                     <form method="POST" action="{{ route('aporte.avisos.anular', $aviso) }}" class="mt-4"
                         onsubmit="return confirm('¿Anular este aviso pendiente?')">
@@ -68,7 +90,11 @@
                 @endif
             </div>
 
-            {{-- Validación por Administración: distribuir entre cuotas (§20.12) --}}
+            {{--
+                Sección de validación. Solo la ve quien tiene permiso para gestionar avisos
+                (Administración) y solo si el aviso sigue pendiente. Aquí se reparte el monto
+                declarado entre las cuotas de uno o varios hijos.
+            --}}
             @can('aporte.avisos.gestionar')
                 @if ($aviso->estaPendiente())
                     <div class="bg-white shadow-sm rounded-lg p-6">
@@ -80,6 +106,7 @@
                             y el comprobante interno (transaccional, sin doble procesamiento).
                         </p>
 
+                        {{-- Si no hay cuotas con saldo no se puede validar; se sugiere generar cuotas o rechazar --}}
                         @if ($cuotasPorAlumno->isEmpty())
                             <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded p-3 text-sm">
                                 Los representados de este responsable no tienen cuotas con saldo en la gestión del aviso.
@@ -88,6 +115,12 @@
                         @else
                             <form method="POST" action="{{ route('aporte.avisos.validar', $aviso) }}" id="form-validar">
                                 @csrf
+                                {{--
+                                    Por cada estudiante listamos sus cuotas con saldo. Cada cuota tiene una
+                                    casilla para marcarla y un campo para el monto a aplicar; ambos inician
+                                    deshabilitados y el script de abajo los activa al marcar la casilla, así
+                                    solo se envían al servidor las cuotas seleccionadas.
+                                --}}
                                 <div class="space-y-5">
                                     @foreach ($cuotasPorAlumno as $alumnoId => $cuotasAlumno)
                                         <div>
@@ -121,6 +154,11 @@
                                     @endforeach
                                 </div>
 
+                                {{--
+                                    Resumen de la distribución: monto del aviso frente a la suma asignada.
+                                    El botón de validar empieza deshabilitado y solo se activa cuando ambas
+                                    cantidades coinciden exactamente.
+                                --}}
                                 <div class="mt-5 border-t border-slate-200 pt-4">
                                     <div class="flex justify-between text-sm mb-1">
                                         <span class="text-slate-600">Monto del aviso</span>
@@ -144,7 +182,10 @@
 
                         <hr class="my-6 border-slate-200">
 
-                        {{-- Rechazo con motivo (§20.13): la deuda no cambia --}}
+                        {{--
+                            Formulario de rechazo: exige escribir el motivo para que el responsable sepa
+                            por qué no se aceptó. Rechazar no modifica la deuda del estudiante.
+                        --}}
                         <form method="POST" action="{{ route('aporte.avisos.rechazar', $aviso) }}" class="space-y-3"
                             onsubmit="return confirm('¿Rechazar este aviso? La deuda del alumno no cambiará.')">
                             @csrf
@@ -162,6 +203,13 @@
         </div>
     </div>
 
+    {{--
+        Script de apoyo para la distribución del pago. Solo se carga cuando el usuario
+        puede validar y existen cuotas. Habilita los campos de las cuotas marcadas,
+        recalcula la suma en centavos (para evitar errores de redondeo) y no deja
+        enviar el formulario hasta que la suma sea igual al monto del aviso.
+        De todas formas, el servidor vuelve a validar estas reglas.
+    --}}
     @can('aporte.avisos.gestionar')
         @if ($aviso->estaPendiente() && $cuotasPorAlumno->isNotEmpty())
             <script>

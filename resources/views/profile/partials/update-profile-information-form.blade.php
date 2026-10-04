@@ -1,3 +1,9 @@
+{{--
+    Parcial del perfil: información de la cuenta.
+    Formulario para actualizar el nombre y el correo electrónico del usuario. Si el sistema
+    exige verificar el correo y el usuario aún no lo hizo, se le ofrece reenviar el enlace de
+    verificación. Usa la variable $user (usuario autenticado) que recibe profile.edit.
+--}}
 <section>
     <header>
         <h2 class="text-lg font-medium text-gray-900">
@@ -9,10 +15,15 @@
         </p>
     </header>
 
+    {{--
+        Formulario oculto para reenviar el correo de verificación. Está separado porque HTML no
+        permite formularios anidados; el botón de más abajo lo envía con el atributo form="send-verification".
+    --}}
     <form id="send-verification" method="post" action="{{ route('verification.send') }}">
         @csrf
     </form>
 
+    {{-- Formulario principal: se envía como PATCH porque solo se actualizan algunos campos del usuario. --}}
     <form method="post" action="{{ route('profile.update') }}" class="mt-6 space-y-6">
         @csrf
         @method('patch')
@@ -28,6 +39,7 @@
             <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
+            {{-- Aviso de correo sin verificar: solo aparece si el modelo User exige verificación y el correo no está verificado. --}}
             @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
                 <div>
                     <p class="text-sm mt-2 text-gray-800">
@@ -50,6 +62,7 @@
         <div class="flex items-center gap-4">
             <x-primary-button>{{ __('Save') }}</x-primary-button>
 
+            {{-- Confirmación temporal de guardado, que se oculta sola a los 2 segundos. --}}
             @if (session('status') === 'profile-updated')
                 <p
                     x-data="{ show: true }"

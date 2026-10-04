@@ -1,3 +1,12 @@
+{{--
+    Vista: Editar aviso
+    Permite modificar un aviso ya creado. Reutiliza el formulario parcial
+    avisos/_form con los datos actuales del aviso.
+
+    Variables que recibe del controlador:
+    - $aviso: el aviso que se está editando.
+    - $cursos y $estudiantes: listas para elegir destinatarios específicos.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-slate-800 leading-tight">Editar aviso</h2>
@@ -6,6 +15,10 @@
     <div class="py-8">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{--
+                    Advertencia para avisos ya publicados: si se cambian los destinatarios, los
+                    anteriores no se borran, para no perder el registro de a quién se avisó.
+                --}}
                 @if ($aviso->publicado)
                     <div class="mb-4 bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded text-sm">
                         Este aviso ya está publicado. Si cambia los destinatarios y guarda,
@@ -13,6 +26,7 @@
                         (trazabilidad de a quién se avisó, §13).
                     </div>
                 @endif
+                {{-- Formulario de actualización; se usa PUT porque modifica un registro existente --}}
                 <form method="POST" action="{{ route('avisos.update', $aviso) }}" class="space-y-4">
                     @csrf
                     @method('PUT')

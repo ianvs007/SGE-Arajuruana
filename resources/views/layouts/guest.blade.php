@@ -1,3 +1,10 @@
+{{--
+    Layout para invitados (componente <x-guest-layout>).
+    Plantilla de las pantallas públicas, es decir, las que se ven antes de iniciar sesión:
+    inicio de sesión, recuperación y restablecimiento de contraseña, etc. Es más simple que el
+    layout principal: no tiene menú, solo el logo de la institución centrado y una tarjeta
+    blanca donde cada vista coloca su formulario a través del slot $slot.
+--}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -9,10 +16,12 @@
 
         <!-- Sin recursos CDN: la gestión interna funciona en red local (§18). -->
 
+        {{-- Estilos y scripts compilados con Vite, los mismos que usa el resto del sistema. --}}
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans text-gray-900 antialiased">
+        {{-- Contenedor que centra el logo y la tarjeta del formulario en la pantalla. --}}
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">
             <div>
                 {{-- Logo institucional en lugar del logo de Laravel (30/09/2026).
@@ -27,6 +36,7 @@
                 </a>
             </div>
 
+            {{-- Tarjeta donde se muestra el contenido de cada pantalla pública (por ejemplo, el formulario de login). --}}
             <div class="w-full sm:max-w-md mt-6 px-6 py-4 bg-white shadow-md overflow-hidden sm:rounded-lg">
                 {{ $slot }}
             </div>

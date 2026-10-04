@@ -1,10 +1,25 @@
+{{--
+    Vista: Listado de asistencias
+    Muestra los registros de asistencia de un día, filtrando por curso y turno.
+    La usan la dirección y los docentes para revisar la asistencia, y también el
+    responsable familiar para verificar la de sus hijos (el controlador ya le
+    filtra solo los registros que le corresponden).
+
+    Variables que recibe del controlador:
+    - $asistencias: registros paginados.
+    - $cursos: cursos disponibles para el filtro.
+    - $fecha, $cursoId y $turno: valores actuales de los filtros.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Asistencias</h2>
             <div class="flex gap-2">
-                {{-- El reporte por curso es institucional: el responsable familiar
-                     verifica a sus hijos en este listado diario (30/09/2026). --}}
+                {{--
+                    Los botones de reporte y de registro solo aparecen para quien gestiona asistencia
+                    (dirección y docentes). El reporte por curso es institucional, por eso el
+                    responsable familiar no lo ve y revisa a sus hijos en este listado diario.
+                --}}
                 @can('asistencia.gestionar')
                     <a href="{{ route('asistencias.reporte', ['curso_id' => $cursoId, 'turno' => $turno, 'desde' => $fecha, 'hasta' => $fecha]) }}"><x-secondary-button type="button">Reporte con denominador</x-secondary-button></a>
                     <a href="{{ route('asistencias.create', ['fecha' => $fecha, 'curso_id' => $cursoId, 'turno' => $turno]) }}"><x-primary-button type="button">Registrar asistencia</x-primary-button></a>
@@ -17,6 +32,7 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.flash')
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{-- Filtros de búsqueda: fecha, curso y turno --}}
                 <form method="GET" class="mb-4 grid sm:grid-cols-4 gap-3">
                     <div>
                         <x-input-label for="fecha" value="Fecha" />
@@ -45,6 +61,11 @@
                     </div>
                 </form>
 
+                {{--
+                    Tabla de registros. Cada estado tiene su color y en la última columna se ve quién
+                    registró la asistencia y, si alguien la corrigió después, quién lo hizo.
+                    Si no hay registros se aclara que "sin registro" no significa que el alumno faltó.
+                --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
@@ -85,6 +106,7 @@
                         </tbody>
                     </table>
                 </div>
+                {{-- Enlaces de paginación --}}
                 <div class="mt-4">{{ $asistencias->links() }}</div>
             </div>
         </div>

@@ -24,18 +24,37 @@ use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 
 /**
- * Datos de demostración ficticios (§2: contexto boliviano, datos de prueba ficticios).
+ * Seeder principal: carga datos de demostración ficticios.
+ *
+ * Con este seeder llenamos la base de datos con un escenario de prueba
+ * ambientado en el contexto boliviano (nombres, carnets del Beni, montos en
+ * bolivianos), pero con datos totalmente inventados. Sirve para probar el
+ * sistema y para mostrarlo en la defensa sin usar información real de alumnos.
+ *
+ * Carga, en este orden: roles y permisos, dos gestiones (la actual y la
+ * anterior), un usuario por cada rol, cursos con horarios, un docente asignado,
+ * tres hermanos inscritos con sus padres vinculados, y ejemplos de asistencia,
+ * calendario, incidencias, salidas, citaciones, avisos y del módulo económico.
+ *
+ * Usamos updateOrCreate() y firstOrCreate() casi siempre, de modo que el seeder
+ * se puede ejecutar varias veces sin duplicar registros.
+ *
  * Contraseña de todas las cuentas demo: password
  */
 class DatabaseSeeder extends Seeder
 {
+    /**
+     * Ejecuta la carga de datos de demostración.
+     */
     public function run(): void
     {
-        // Permisos y matriz de roles sincronizados desde un seeder dedicado,
-        // reutilizable en producción sin sembrar datos demo.
+        // Los permisos y la matriz de roles se sincronizan desde un seeder
+        // aparte, que también se puede usar en producción sin cargar datos demo.
         $this->call(RolePermissionSeeder::class);
 
-        // --- Gestión académica configurable (§4) ---
+        // --- Gestión académica configurable ---
+        // Creamos la gestión 2026 como la vigente y la 2025 como histórica,
+        // para poder demostrar el historial de un alumno entre años.
         $gestion = Gestion::updateOrCreate(
             ['anio' => 2026],
             [
@@ -58,7 +77,8 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // --- Usuarios demo con los roles confirmados (§5) ---
+        // --- Usuarios demo, uno por cada rol confirmado con el colegio ---
+        // Padre y madre tienen el rol Responsable Familiar y cuentas separadas.
         $users = [
             ['name' => 'Ana María Justiniano', 'email' => 'administracion@sge.local', 'role' => 'Administración', 'documento' => '3845921 Beni'],
             ['name' => 'Carlos Roca Suárez', 'email' => 'director@sge.local', 'role' => 'Director', 'documento' => '2917455 Beni'],
@@ -69,6 +89,8 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Elena López Rivero', 'email' => 'madre@sge.local', 'role' => User::ROL_RESPONSABLE, 'documento' => '5298341 Beni', 'telefono' => '70000002'],
         ];
 
+        // Creamos (o actualizamos) cada usuario buscando por correo, con la
+        // contraseña cifrada y el correo ya verificado para entrar directo.
         foreach ($users as $data) {
             $user = User::updateOrCreate(
                 ['email' => $data['email']],
@@ -81,15 +103,20 @@ class DatabaseSeeder extends Seeder
                     'email_verified_at' => now(),
                 ]
             );
+            // syncRoles deja al usuario solo con este rol, aunque antes tuviera otro.
             $user->syncRoles([$data['role']]);
         }
 
-        // --- Cursos de la gestión actual (configurables, no fijos en código) ---
+        // --- Cursos de la gestión actual (se configuran desde el sistema, no están fijos en el código) ---
+        // Uno de primaria en turno mañana y uno de secundaria en turno mixto,
+        // para probar la asistencia en ambos turnos.
         $cursosDef = [
             ['nombre' => '1ro de Primaria', 'nivel' => 'Primaria', 'grado' => '1ro', 'paralelo' => 'A', 'turno' => 'manana', 'orden' => 1],
             ['nombre' => '3ro de Secundaria', 'nivel' => 'Secundaria', 'grado' => '3ro', 'paralelo' => 'A', 'turno' => 'mixto', 'orden' => 2],
         ];
 
+        // Guardamos los cursos creados en un arreglo indexado por nombre para
+        // usarlos más abajo al inscribir a los alumnos.
         $cursos = [];
         foreach ($cursosDef as $def) {
             $cursos[$def['nombre']] = Curso::updateOrCreate(
@@ -105,7 +132,7 @@ class DatabaseSeeder extends Seeder
             );
         }
 
-        // Curso de la gestión anterior (para demostrar historial entre gestiones)
+        // Curso de la gestión anterior, ya inactivo, para demostrar el historial entre gestiones.
         $cursoAnterior = Curso::updateOrCreate(
             ['gestion_id' => $gestionAnterior->id, 'nombre' => '3ro de Secundaria', 'paralelo' => 'A'],
             [
@@ -118,7 +145,8 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // --- Horario demo: 3ro Secundaria tiene clases por la tarde (§4) ---
+        // --- Horario demo: 3ro de Secundaria tiene clases el lunes en la mañana y
+        // también en la tarde; 1ro de Primaria solo en la mañana ---
         $cursoMixto = $cursos['3ro de Secundaria'];
         HorarioCurso::updateOrCreate(
             ['curso_id' => $cursoMixto->id, 'dia_semana' => 1, 'turno' => 'manana', 'hora_inicio' => '08:00:00'],
@@ -134,13 +162,17 @@ class DatabaseSeeder extends Seeder
             ['hora_fin' => '12:00:00', 'activo' => true, 'vigente_desde' => $gestion->fecha_inicio]
         );
 
-        // --- Docente asignado a su curso (§5: valida pertenencia curso-docente) ---
+        // --- Docente asignado a su curso ---
+        // Sirve para probar que el docente solo puede trabajar con los cursos
+        // que tiene asignados. syncWithoutDetaching no borra otras asignaciones.
         $docente = User::where('email', 'docente@sge.local')->first();
         $cursoMixto->docentes()->syncWithoutDetaching([
             $docente->id => ['gestion_id' => $gestion->id, 'rol_docente' => 'docente_aula'],
         ]);
 
-        // --- Alumnos: identidad + inscripciones separadas (§7) ---
+        // --- Alumnos: los datos de identidad y las inscripciones se guardan por separado ---
+        // Cargamos tres hermanos para probar que una familia con varios hijos
+        // se maneja bien (por ejemplo, un solo pago para dos hijos).
         $padre = User::where('email', 'padre@sge.local')->first();
         $madre = User::where('email', 'madre@sge.local')->first();
 
@@ -158,19 +190,19 @@ class DatabaseSeeder extends Seeder
                     'apellidos' => $def['apellidos'],
                     'fecha_nacimiento' => $def['fn'],
                     'sexo' => $def['sexo'],
-                    'curso_id' => $cursos[$def['curso']]->id, // transición
+                    'curso_id' => $cursos[$def['curso']]->id, // se mantiene por compatibilidad mientras se pasa a usar inscripciones
                     'estado' => 'activo',
                 ]
             );
 
             // Padre y madre tienen cuentas separadas, vinculadas a los mismos alumnos,
-            // sin duplicar la obligación de aporte (§5, §14).
+            // sin duplicar la obligación de aporte (la cuota es por alumno, no por padre).
             $estudiante->responsables()->syncWithoutDetaching([
                 $padre->id => ['parentesco' => 'padre', 'es_principal' => true],
                 $madre->id => ['parentesco' => 'madre', 'es_principal' => false],
             ]);
 
-            // Inscripción en la gestión actual
+            // Inscripción en la gestión actual.
             Inscripcion::updateOrCreate(
                 ['estudiante_id' => $estudiante->id, 'gestion_id' => $gestion->id],
                 [
@@ -180,7 +212,7 @@ class DatabaseSeeder extends Seeder
                 ]
             );
 
-            // Inscripción histórica del mayor (demuestra historial entre gestiones, §7)
+            // Inscripción del hermano mayor en la gestión anterior, para mostrar su historial entre gestiones.
             if ($def['codigo'] === 'EST-2026-002') {
                 Inscripcion::updateOrCreate(
                     ['estudiante_id' => $estudiante->id, 'gestion_id' => $gestionAnterior->id],
@@ -193,7 +225,8 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // --- Asistencia demo (estados confirmados §9; turno manana/tarde) ---
+        // --- Asistencia demo: un registro "presente" de hoy en el turno mañana ---
+        // Los estados posibles (presente, ausente, etc.) son los confirmados con el colegio.
         $estudiante1 = Estudiante::where('codigo', 'EST-2026-001')->first();
         Asistencia::updateOrCreate(
             ['estudiante_id' => $estudiante1->id, 'fecha' => today()->toDateString(), 'turno' => 'manana'],
@@ -205,18 +238,20 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // --- Excepción de calendario demo (§9): jornada sin clases, no genera ausentes ---
+        // --- Excepción de calendario demo: jornada sin clases para todo el colegio
+        // (curso_id null), por lo que ese día no se cuentan ausencias ---
         CalendarioExcepcion::updateOrCreate(
             ['gestion_id' => $gestion->id, 'curso_id' => null, 'fecha' => '2026-02-02', 'tipo' => CalendarioExcepcion::TIPO_SIN_CLASES],
             ['motivo' => 'Primer día de inscripción y organización interna (demo)']
         );
 
-        // --- Categorías de incidencias demo (§11): configurables por Administración ---
+        // --- Categorías de incidencias demo (luego Administración puede cambiarlas) ---
         foreach (['Convivencia y disciplina', 'Puntualidad y asistencia', 'Cuidado del material', 'Situación familiar'] as $nombreCategoria) {
             IncidenciaCategoria::updateOrCreate(['nombre' => $nombreCategoria], ['activa' => true]);
         }
 
-        // Incidencia demo no confidencial + una confidencial (solo visible para Administración)
+        // Una incidencia demo normal y otra confidencial (esta última solo la ve
+        // Administración), para probar el control de visibilidad.
         $estudiante2 = Estudiante::where('codigo', 'EST-2026-002')->first();
         $categoriaConvivencia = IncidenciaCategoria::where('nombre', 'Convivencia y disciplina')->first();
         Incidencia::updateOrCreate(
@@ -241,7 +276,9 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // --- Salida demo con flujo completo (§10): autorizada → salida efectiva → retorno ---
+        // --- Salida demo con el flujo completo: autorizada → salida efectiva → retorno ---
+        // La autoriza el Director y Administración registra la salida, verifica
+        // el documento de quien retira y registra el retorno del alumno.
         $director = User::where('email', 'director@sge.local')->first();
         $salida = SalidaEstudiante::updateOrCreate(
             ['estudiante_id' => $estudiante1->id, 'fecha' => today()->subDay()->toDateString(), 'estado' => 'retornada'],
@@ -262,7 +299,8 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // --- Citación demo con acuerdos y seguimiento (§12) ---
+        // --- Citación demo con responsable de seguimiento y fecha de revisión ---
+        // La genera la docente para dentro de tres días y queda pendiente.
         Citacion::updateOrCreate(
             ['estudiante_id' => $estudiante2->id, 'fecha' => today()->addDays(3)->toDateString(), 'hora' => '15:00:00'],
             [
@@ -276,10 +314,12 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // --- Avisos institucionales demo (Etapa 5, §13) ---
+        // --- Avisos institucionales demo (etapa 5) ---
+        // Cargamos tres avisos con distinta audiencia: para todos, para un
+        // curso y para la familia de un alumno.
         $admin = User::where('email', 'administracion@sge.local')->first();
 
-        // General, publicado y con destinatarios materializados.
+        // Aviso general, publicado y con sus destinatarios ya guardados.
         $avisoBienvenida = Aviso::updateOrCreate(
             ['titulo' => 'Bienvenida al Sistema de Gestión Educativa'],
             [
@@ -290,10 +330,11 @@ class DatabaseSeeder extends Seeder
                 'creado_por' => $admin->id,
             ]
         );
-        // publicar() es idempotente: materializa destinatarios sin duplicar (§13).
+        // publicar() se puede llamar varias veces sin problema: guarda la lista
+        // de destinatarios del aviso sin duplicarlos.
         NotificacionService::publicar($avisoBienvenida);
 
-        // Dirigido a un curso, con confirmación de lectura OPCIONAL (no bloqueante).
+        // Aviso dirigido a un curso, con confirmación de lectura OPCIONAL (no bloquea nada).
         $avisoCurso = Aviso::firstOrCreate(
             ['titulo' => 'Reunión de responsables — 3ro de Secundaria'],
             [
@@ -308,7 +349,7 @@ class DatabaseSeeder extends Seeder
         );
         NotificacionService::publicar($avisoCurso);
 
-        // Dirigido a la familia de un alumno (aviso específico, §13).
+        // Aviso dirigido solo a la familia de un alumno (los responsables de Ana Gabriela).
         $avisoFamilia = Aviso::firstOrCreate(
             ['titulo' => 'Recordatorio de aporte — Ana Gabriela'],
             [
@@ -323,10 +364,11 @@ class DatabaseSeeder extends Seeder
         NotificacionService::publicar($avisoFamilia);
 
         // =====================================================================
-        // Etapa 4 (§14, §15): módulo económico demo
+        // Etapa 4: datos demo del módulo económico (aporte mensual)
         // =====================================================================
 
-        // Parámetros de aporte de la gestión actual: Bs 40, feb–nov, día 10.
+        // Parámetros de aporte de la gestión actual: Bs 40 por mes, de febrero
+        // a noviembre, con vencimiento el día 10 de cada mes.
         AporteParametro::updateOrCreate(
             ['gestion_id' => $gestion->id],
             [
@@ -338,11 +380,14 @@ class DatabaseSeeder extends Seeder
             ]
         );
 
-        // Cuotas de los alumnos inscritos (idempotente; obliga por alumno).
+        // Generamos las cuotas mensuales de cada alumno inscrito. El servicio no
+        // duplica cuotas si se ejecuta de nuevo, y la obligación es por alumno.
         AporteService::generarCuotasDeGestion($gestion, $admin);
 
-        // Flujo demo completo: aviso del padre → validado por Administración con
-        // distribución entre dos hijos (§20.12), comprobante interno emitido.
+        // Flujo demo completo: el padre avisa que pagó Bs 80 y Administración lo
+        // valida repartiendo el monto entre las cuotas de febrero de dos hijos,
+        // con lo que se emite el comprobante interno. Solo se crea si todavía no
+        // existe, para no repetir el pago al volver a ejecutar el seeder.
         if (! AvisoPago::where('referencia', 'AVI-DEMO-000001')->exists()) {
             $avisoDemo = AvisoPago::create([
                 'referencia' => 'AVI-DEMO-000001',
@@ -354,6 +399,8 @@ class DatabaseSeeder extends Seeder
                 'informado_en' => now()->subDays(2),
             ]);
 
+            // Buscamos la cuota de febrero de cada hijo y, si ambas existen,
+            // validamos el aviso aplicando Bs 40 a cada una.
             $cuotaHija = CuotaAporte::where('gestion_id', $gestion->id)
                 ->where('estudiante_id', $estudiante1->id)->where('mes', 2)->first();
             $cuotaHijo = CuotaAporte::where('gestion_id', $gestion->id)
@@ -367,8 +414,9 @@ class DatabaseSeeder extends Seeder
             }
         }
 
-        // Aviso pendiente demo (muestra la cola de validación de Administración):
-        // un aviso pendiente NO reduce deuda ni genera comprobante (§20.13).
+        // Aviso pendiente demo, para que la bandeja de validación de
+        // Administración no aparezca vacía. Mientras siga pendiente NO reduce la
+        // deuda ni genera comprobante.
         AvisoPago::firstOrCreate(
             ['referencia' => 'AVI-DEMO-000002'],
             [

@@ -1,4 +1,20 @@
+{{--
+    Vista: Panel principal (dashboard)
+    Es la primera pantalla que ve cualquier usuario después de iniciar sesión.
+    Muestra un resumen distinto según el rol: el responsable familiar ve solo
+    la información de sus hijos (saldo, citaciones, avisos de pago), mientras
+    que la dirección, secretaría y los docentes ven indicadores institucionales.
+
+    Variables que recibe del controlador:
+    - $stats: arreglo con los contadores del panel; solo trae las claves que el
+      usuario tiene permitido ver, por eso en la vista se pregunta con array_key_exists.
+    - $avisosRecientes, $avisosSinLeer, $avisosPorConfirmar: avisos institucionales
+      dirigidos al usuario y sus contadores.
+    - $misEstudiantes, $deudaPorHijo, $misAvisos, $misCitaciones: datos que solo
+      se usan en el panel del responsable familiar.
+--}}
 <x-app-layout>
+    {{-- Título de la página que se muestra en la cabecera del layout principal --}}
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-slate-800 leading-tight">
             Panel
@@ -7,10 +23,12 @@
 
     <div class="py-8">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            {{-- Mensaje de éxito que deja el controlador en la sesión después de alguna acción --}}
             @if (session('success'))
                 <div class="bg-emerald-50 text-emerald-800 px-4 py-3 rounded">{{ session('success') }}</div>
             @endif
 
+            {{-- Saludo de bienvenida con el nombre del usuario y, si tiene, el rol asignado con Spatie --}}
             <div class="bg-white shadow-sm sm:rounded-lg p-6">
                 <p class="text-slate-600">Bienvenido, <strong>{{ auth()->user()->name }}</strong>
                     @if(auth()->user()->roles->first())
@@ -19,7 +37,11 @@
                 </p>
             </div>
 
-            {{-- Etapa 5 (§13): avisos institucionales recibidos — lectura opcional, nunca bloqueante --}}
+            {{--
+                Avisos institucionales recibidos por el usuario. El bloque solo aparece
+                si hay avisos recientes o alguno sin leer. Leerlos o confirmarlos es
+                opcional: nunca se bloquea el uso del sistema por no hacerlo.
+            --}}
             @if ($avisosRecientes->isNotEmpty() || $avisosSinLeer > 0)
                 <div class="bg-white shadow-sm sm:rounded-lg p-6">
                     <div class="flex flex-wrap justify-between items-center gap-2 mb-3">
@@ -33,6 +55,10 @@
                         </h3>
                         <a href="{{ route('avisos.index') }}" class="text-sky-700 text-sm hover:underline">Ver todos</a>
                     </div>
+                    {{--
+                        Recorremos los registros de destino (relación usuario-aviso). Los no leídos
+                        se marcan con un punto azul y debajo se indica si ya se confirmó la lectura.
+                    --}}
                     <ul class="space-y-2">
                         @foreach ($avisosRecientes as $destino)
                             <li class="flex justify-between gap-3 border-b border-slate-100 pb-2 text-sm">
@@ -55,6 +81,7 @@
                             </li>
                         @endforeach
                     </ul>
+                    {{-- Nota aclaratoria para que el usuario sepa que confirmar no es obligatorio --}}
                     @if ($avisosPorConfirmar > 0)
                         <p class="text-xs text-slate-500 mt-3">
                             La confirmación de lectura es opcional: el sistema se usa con normalidad sin confirmar (§13).
@@ -63,8 +90,13 @@
                 </div>
             @endif
 
+            {{--
+                A partir de aquí el panel se divide según el rol. Con @role verificamos si el
+                usuario es Responsable Familiar; en ese caso solo ve la información de sus
+                propios hijos. Cualquier otro rol cae en el bloque @else (panel institucional).
+            --}}
             @role('Responsable Familiar')
-                {{-- ---------- Panel del responsable familiar: solo lo propio ---------- --}}
+                {{-- Panel del responsable familiar: tarjetas con sus indicadores personales --}}
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="bg-white p-5 shadow-sm sm:rounded-lg">
                         <div class="text-sm text-slate-500">Saldo de aporte (§14)</div>
@@ -84,6 +116,11 @@
                     </div>
                 </div>
 
+                {{--
+                    Lista de hijos vinculados al responsable. Para cada uno buscamos su deuda en
+                    $deudaPorHijo; si tiene saldo vencido se resalta en rojo para llamar la atención.
+                    Además se ofrecen accesos directos a su estado de cuenta y a su historial.
+                --}}
                 <div class="bg-white shadow-sm sm:rounded-lg p-6">
                     <h3 class="font-semibold mb-3">Mis representados</h3>
                     <ul class="space-y-2">
@@ -113,6 +150,7 @@
                         @endforelse
                     </ul>
 
+                    {{-- Últimos avisos de pago que informó el responsable, con un color según su estado --}}
                     @if ($misAvisos->isNotEmpty())
                         <h3 class="font-semibold mt-5 mb-3">Mis avisos de pago recientes</h3>
                         <ul class="space-y-2">
@@ -130,6 +168,7 @@
                         </ul>
                     @endif
 
+                    {{-- Citaciones dirigidas al responsable, mostrando fecha, hora y motivo --}}
                     @if ($misCitaciones->isNotEmpty())
                         <h3 class="font-semibold mt-5 mb-3">Mis citaciones</h3>
                         <ul class="space-y-2">
@@ -142,6 +181,7 @@
                         </ul>
                     @endif
 
+                    {{-- Enlaces rápidos a los módulos que el responsable familiar puede consultar --}}
                     <div class="mt-4 flex flex-wrap gap-3">
                         <a href="{{ route('aporte.avisos.index') }}" class="text-sky-700">Avisos de pago</a>
                         <a href="{{ route('aporte.pagos.index') }}" class="text-sky-700">Mis pagos</a>
@@ -150,7 +190,12 @@
                     </div>
                 </div>
             @else
-                {{-- ---------- Panel institucional / docente ---------- --}}
+                {{--
+                    Panel institucional (dirección, secretaría, docentes, etc.). Cada tarjeta se
+                    muestra solo si el controlador envió esa clave en $stats, es decir, solo si el
+                    rol del usuario tiene permiso para ver ese dato. Así un docente ve sus alumnos
+                    y cursos, pero no los montos económicos de la unidad educativa.
+                --}}
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     @if (array_key_exists('estudiantes', $stats))
                         <div class="bg-white p-5 shadow-sm sm:rounded-lg">
@@ -174,7 +219,7 @@
                             <div class="text-2xl font-semibold">{{ $stats['asistencias_hoy'] }}</div>
                         </div>
                     @endif
-                    {{-- §11: incidencias solo para quien tiene permiso del módulo --}}
+                    {{-- Las incidencias solo se muestran a quien tiene permiso sobre ese módulo --}}
                     @if (array_key_exists('incidencias_abiertas', $stats))
                         <div class="bg-white p-5 shadow-sm sm:rounded-lg">
                             <div class="text-sm text-slate-500">Incidencias abiertas</div>
@@ -199,6 +244,7 @@
                             <div class="text-2xl font-semibold">{{ $stats['citaciones_pendientes'] }}</div>
                         </div>
                     @endif
+                    {{-- Esta tarjeta solo aparece cuando realmente hay revisiones vencidas, y se pinta en rojo --}}
                     @if (array_key_exists('citaciones_revision_vencida', $stats) && $stats['citaciones_revision_vencida'] > 0)
                         <div class="bg-white p-5 shadow-sm sm:rounded-lg">
                             <div class="text-sm text-slate-500">Revisiones vencidas</div>
@@ -211,7 +257,11 @@
                             <div class="text-2xl font-semibold">{{ $stats['pagos_revision'] }}</div>
                         </div>
                     @endif
-                    {{-- Etapa 4 (§14): económico institucional, solo con permiso --}}
+                    {{--
+                        Indicadores económicos del aporte. Solo los ve quien tiene permiso sobre el
+                        módulo económico. Si hay avisos de pago pendientes, la tarjeta se resalta y
+                        aparece un enlace directo para revisarlos.
+                    --}}
                     @if (array_key_exists('avisos_pago_pendientes', $stats))
                         <div class="bg-white p-5 shadow-sm sm:rounded-lg {{ $stats['avisos_pago_pendientes'] > 0 ? 'border-2 border-amber-300' : '' }}">
                             <div class="text-sm text-slate-500">Avisos de pago por validar</div>

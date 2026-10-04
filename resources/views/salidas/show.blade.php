@@ -1,3 +1,14 @@
+{{--
+    Vista: Detalle de una salida.
+    Muestra todo el recorrido de una salida de alumno en tres pasos: autorización, salida
+    efectiva y retorno. Además de los datos de la salida, según el estado y los permisos del
+    usuario aparecen los formularios para registrar la salida efectiva, cancelar la autorización
+    o registrar el retorno del alumno.
+    Recibe del controlador:
+      - $salida: la salida con su estudiante y los usuarios que intervinieron en cada paso.
+      - $puedeRegistrar: indica si el usuario puede registrar la salida efectiva y el retorno.
+    La usan el personal que autoriza salidas y la Administración, que registra los demás pasos.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
@@ -10,7 +21,11 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
-            {{-- Línea de estados (§10): autorización ≠ salida efectiva ≠ retorno --}}
+            {{--
+                Línea de estados. Separamos tres momentos distintos: que se autorice la salida no
+                significa que el alumno ya se fue, y que se haya ido no significa que ya volvió.
+                Cada paso se pinta de verde cuando ya ocurrió y muestra quién lo registró y cuándo.
+            --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 @php($colores = ['autorizada' => 'bg-amber-100 text-amber-800', 'salida_efectiva' => 'bg-sky-100 text-sky-800', 'retornada' => 'bg-emerald-100 text-emerald-800', 'cancelada' => 'bg-slate-200 text-slate-600'])
                 <div class="flex flex-wrap items-center gap-2 text-sm">
@@ -18,6 +33,7 @@
                     <span class="inline-flex items-center px-3 py-1 rounded-full font-semibold {{ $colores[$salida->estado] ?? '' }}">{{ $salida->nombreEstado() }}</span>
                 </div>
                 <ol class="mt-4 grid sm:grid-cols-3 gap-3 text-xs">
+                    {{-- Paso 1: autorización. --}}
                     <li class="rounded border {{ $salida->autorizado_en ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200' }} p-3">
                         <div class="font-semibold text-slate-700">1. Autorización</div>
                         @if ($salida->autorizado_en)
@@ -26,6 +42,7 @@
                             <div class="mt-1 text-slate-400">Pendiente</div>
                         @endif
                     </li>
+                    {{-- Paso 2: salida efectiva, con la hora real en que el alumno se retiró. --}}
                     <li class="rounded border {{ $salida->salida_en ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200' }} p-3">
                         <div class="font-semibold text-slate-700">2. Salida efectiva</div>
                         @if ($salida->salida_en)
@@ -37,6 +54,7 @@
                             <div class="mt-1 text-slate-400">Aún no se retiró</div>
                         @endif
                     </li>
+                    {{-- Paso 3: retorno. Si la salida fue cancelada, este paso ya no aplica. --}}
                     <li class="rounded border {{ $salida->retorno_en ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200' }} p-3">
                         <div class="font-semibold text-slate-700">3. Retorno</div>
                         @if ($salida->retorno_en)
@@ -51,6 +69,7 @@
                 </ol>
             </div>
 
+            {{-- Datos de la salida: estudiante, curso, fecha, motivo, persona que retira y verificación realizada. --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <dl class="grid sm:grid-cols-2 gap-4 text-sm">
                     <div>
@@ -88,9 +107,13 @@
                 </dl>
             </div>
 
+            {{-- Zona de acciones: solo se muestra si el usuario puede registrar pasos o si la salida sigue autorizada. --}}
             @if ($puedeRegistrar || $salida->estado === 'autorizada')
                 <div class="grid lg:grid-cols-2 gap-6">
-                    {{-- Registrar salida efectiva: solo Administración (§20.7) --}}
+                    {{--
+                        Registrar la salida efectiva: lo hace solo Administración y únicamente mientras la
+                        salida está autorizada. Aquí se anota la hora real y los datos de quien recoge al alumno.
+                    --}}
                     @if ($salida->estado === 'autorizada')
                         @can('salidas.registrar')
                             <div class="bg-white shadow-sm rounded-lg p-6">
@@ -126,6 +149,7 @@
                             </div>
                         @endcan
 
+                        {{-- Cancelar la autorización: para quien autoriza salidas, mientras el alumno no se haya retirado. Exige indicar el motivo. --}}
                         @can('salidas.autorizar')
                             <div class="bg-white shadow-sm rounded-lg p-6">
                                 <h3 class="font-semibold text-slate-800 mb-1">Cancelar autorización</h3>
@@ -146,7 +170,10 @@
                         @endcan
                     @endif
 
-                    {{-- Registrar retorno: solo Administración (§20.7) --}}
+                    {{--
+                        Registrar el retorno: también lo hace solo Administración, cuando el alumno ya salió.
+                        Se recuerda la hora de salida porque el retorno no puede ser anterior a ella.
+                    --}}
                     @if ($salida->estado === 'salida_efectiva' && $puedeRegistrar)
                         <div class="bg-white shadow-sm rounded-lg p-6 lg:col-span-2">
                             <h3 class="font-semibold text-slate-800 mb-1">Registrar retorno</h3>

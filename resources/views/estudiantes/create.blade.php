@@ -1,3 +1,12 @@
+{{--
+    Vista: Nuevo estudiante
+    Formulario para registrar un estudiante. Usa los campos de la vista parcial
+    estudiantes/_form y, además, permite vincular desde ya a su padre o madre.
+
+    Variables que recibe del controlador:
+    - $cursos: cursos disponibles para asignar.
+    - $padres: usuarios responsables que se pueden vincular.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">Nuevo estudiante</h2>
@@ -8,6 +17,10 @@
                 <form method="POST" action="{{ route('estudiantes.store') }}" class="space-y-4">
                     @csrf
                     @include('estudiantes._form')
+                    {{--
+                        Vinculación opcional con un responsable familiar y su parentesco. Así el
+                        responsable puede ver la información de su hijo apenas se registra.
+                    --}}
                     <div class="grid md:grid-cols-2 gap-4 border-t pt-4">
                         <div>
                             <x-input-label for="padre_id" value="Vincular padre/madre (opcional)" />

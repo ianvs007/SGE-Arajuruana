@@ -1,3 +1,16 @@
+{{--
+    Vista: Reporte de asistencia por curso
+    Resume la asistencia de un curso en un rango de fechas, alumno por alumno.
+    Lo importante de este reporte es que el porcentaje se calcula solo sobre los
+    días en que realmente hubo clases (el "denominador"), así los feriados o días
+    sin horario no perjudican al estudiante. Lo usan la dirección y los docentes.
+
+    Variables que recibe del controlador:
+    - $cursos: cursos para el selector; $curso: el curso consultado.
+    - $turno, $desde, $hasta: filtros aplicados.
+    - $totales: conteos generales (días con clases, presentes, ausentes, etc.).
+    - $filas: una fila por estudiante con sus conteos y su porcentaje.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
@@ -10,6 +23,7 @@
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
+            {{-- Filtros del reporte: curso, turno y rango de fechas (todos obligatorios) --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <form method="GET" action="{{ route('asistencias.reporte') }}" class="grid sm:grid-cols-5 gap-3 items-end">
                     <div>
@@ -40,12 +54,17 @@
                 </form>
             </div>
 
+            {{-- Resultado del reporte: datos del curso y periodo consultado --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <div class="text-sm text-slate-600 mb-4">
                     <p class="font-semibold text-slate-800">{{ $curso->etiqueta() }} — Turno {{ \App\Models\Asistencia::TURNOS[$turno] }}</p>
                     <p>Período: {{ \Illuminate\Support\Carbon::parse($desde)->format('d/m/Y') }} al {{ \Illuminate\Support\Carbon::parse($hasta)->format('d/m/Y') }}</p>
                 </div>
 
+                {{--
+                    Tarjetas con los totales del curso. La primera es el denominador (días con clases).
+                    "Sin registro" se muestra aparte porque no tomar lista no es lo mismo que faltar.
+                --}}
                 <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4 text-center">
                     <div class="bg-slate-50 rounded p-3">
                         <div class="text-xl font-bold text-slate-800">{{ $totales['dias_habiles'] }}</div>
@@ -73,6 +92,7 @@
                     </div>
                 </div>
 
+                {{-- Detalle por estudiante; si no se puede calcular el porcentaje se muestra un guion --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead class="bg-slate-50 text-slate-500 text-left">
@@ -110,6 +130,7 @@
                     </table>
                 </div>
 
+                {{-- Nota que explica cómo se calcula el porcentaje, para que el reporte se interprete bien --}}
                 <p class="mt-4 text-xs text-slate-500">
                     El porcentaje usa como denominador únicamente los <strong>días con clases</strong> del período
                     (jornadas sin clases y feriados del calendario no cuentan). Presente + atrasado + justificada +

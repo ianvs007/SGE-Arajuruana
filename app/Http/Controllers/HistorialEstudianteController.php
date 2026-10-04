@@ -9,24 +9,45 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * Historial del alumno (§7): inscripciones, asistencia, salidas, incidencias,
- * citaciones y pagos, mostrando a cada rol únicamente lo autorizado.
+ * Controlador del historial del estudiante.
  *
- * Confidencialidad (§11): las incidencias confidenciales solo se muestran a
- * Administración; para el resto de roles no aparecen ni siquiera mencionadas
- * (no se filtran por historial, panel ni reportes).
+ * Reúne en una sola pantalla todo lo que ocurrió con un alumno: sus
+ * inscripciones, asistencias, salidas, incidencias y citaciones, ordenado
+ * como una línea de tiempo. Lo pueden usar los roles con permiso
+ * "historial.ver" o "estudiantes.ver" (personal institucional, docentes y
+ * responsables familiares), pero cada uno ve únicamente lo que le corresponde.
+ *
+ * Un punto importante es la confidencialidad: las incidencias marcadas como
+ * confidenciales solo las ve Administración. Para el resto de los roles ni
+ * siquiera aparecen mencionadas, ni en el historial, ni en el panel, ni en
+ * los reportes.
  */
 class HistorialEstudianteController extends Controller
 {
+    /**
+     * Muestra el historial completo de un estudiante.
+     *
+     * Primero se verifica que el usuario tenga permiso sobre ese alumno en
+     * particular. Luego se cargan sus registros relacionados, se filtran los
+     * que el rol no debe ver y se arma una línea de tiempo combinada.
+     *
+     * @param  Estudiante  $estudiante  Alumno cuyo historial se quiere consultar.
+     * @return View Vista del historial con la línea de tiempo y los detalles.
+     */
     public function show(Request $request, Estudiante $estudiante): View
     {
         $user = $request->user();
 
-        // Validación por registro (§6): alcance del usuario sobre este alumno.
+        // No basta con tener el permiso general: también comprobamos que este alumno esté
+        // dentro del alcance del usuario (por ejemplo, que un padre no pueda ver a un
+        // estudiante que no es su hijo cambiando el número en la dirección web).
         abort_unless(Alcance::puedeVerEstudiante($user, $estudiante), 403);
 
         $gestion = Gestion::actual();
 
+        // Cargamos de una sola vez todas las relaciones que necesitamos, así evitamos hacer
+        // muchas consultas pequeñas. Ponemos límites a los registros más numerosos para
+        // que la página no se vuelva demasiado pesada.
         $estudiante->load([
             'curso',
             'responsables',
@@ -39,15 +60,18 @@ class HistorialEstudianteController extends Controller
 
         $verConfidenciales = $user->esAdministracion();
 
-        // §11: filtrar incidencias confidenciales para todo rol no autorizado.
+        // Si el usuario no es de Administración, quitamos de la lista las incidencias
+        // confidenciales para que no aparezcan en ninguna parte de la pantalla.
         $incidencias = $estudiante->incidencias
             ->when(! $verConfidenciales, fn ($col) => $col->reject(fn ($i) => $i->confidencial));
 
-        // Citaciones: el responsable familiar solo ve las dirigidas a él (§5).
+        // Un responsable familiar solo debe ver las citaciones dirigidas a él, no las que
+        // se enviaron a otro familiar del mismo estudiante.
         $citaciones = $estudiante->citaciones
             ->when($user->esResponsableFamiliar(), fn ($col) => $col->filter(fn ($c) => (int) $c->padre_id === (int) $user->id));
 
-        // Línea de tiempo combinada, ordenada por fecha descendente.
+        // Armamos una línea de tiempo uniendo todos los tipos de eventos en un mismo
+        // formato (fecha, tipo y detalle) y la ordenamos de lo más reciente a lo más antiguo.
         $eventos = collect()
             ->merge($estudiante->inscripciones->map(fn ($i) => [
                 'fecha' => $i->fecha_inscripcion ?? $i->created_at?->toDateString(),
@@ -68,8 +92,8 @@ class HistorialEstudianteController extends Controller
             ->merge($incidencias->map(fn ($i) => [
                 'fecha' => $i->fecha->toDateString(),
                 'tipo' => 'Incidencia',
-                // Para roles no administrativos se muestra solo categoría y estado,
-                // sin detalles del caso (§11).
+                // A los roles que no son de Administración solo les mostramos la categoría
+                // y el estado, sin los detalles del caso, para proteger la privacidad del alumno.
                 'detalle' => $verConfidenciales
                     ? "{$i->etiquetaPublica()} ({$i->nombreEstado()})".($i->confidencial ? ' — CONFIDENCIAL' : '')
                     : "{$i->etiquetaPublica()} ({$i->nombreEstado()})",
@@ -82,6 +106,7 @@ class HistorialEstudianteController extends Controller
             ->sortByDesc(fn ($e) => $e['fecha'] ?? '')
             ->values();
 
+        // Enviamos a la vista la línea de tiempo y también las listas ya filtradas por rol.
         return view('historial.show', [
             'estudiante' => $estudiante,
             'eventos' => $eventos,

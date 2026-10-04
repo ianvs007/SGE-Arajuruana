@@ -1,4 +1,11 @@
+{{--
+    Vista: Olvidé mi contraseña
+    Permite que un usuario que no recuerda su contraseña escriba su correo para
+    recibir un enlace de restablecimiento. No recibe variables del controlador;
+    usa session('status') para avisar que el correo fue enviado.
+--}}
 <x-guest-layout>
+    {{-- Texto explicativo de lo que hace esta pantalla --}}
     <div class="mb-4 text-sm text-gray-600">
         {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
     </div>
@@ -6,6 +13,7 @@
     <!-- Session Status -->
     <x-auth-session-status class="mb-4" :status="session('status')" />
 
+    {{-- Formulario que solicita el envío del enlace al correo indicado --}}
     <form method="POST" action="{{ route('password.email') }}">
         @csrf
 

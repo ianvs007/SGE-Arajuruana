@@ -1,4 +1,17 @@
+{{--
+    Vista: Historial de un estudiante (línea de tiempo).
+    Reúne en una sola pantalla todo lo que le ocurrió a un estudiante en la unidad educativa:
+    sus inscripciones en cada gestión y los eventos registrados (asistencias, incidencias,
+    citaciones, pagos, salidas, etc.), ordenados por fecha.
+    Recibe del controlador:
+      - $estudiante: el estudiante consultado, con sus responsables (padres o tutores).
+      - $inscripciones: sus inscripciones de todas las gestiones.
+      - $eventos: arreglo de eventos ya armado, cada uno con 'fecha', 'tipo' y 'detalle'.
+      - $verConfidenciales: indica si el rol del usuario puede ver información confidencial.
+    La usan el personal docente y administrativo según sus permisos.
+--}}
 <x-app-layout>
+    {{-- Encabezado con el nombre del estudiante y accesos a su ficha y al listado. --}}
     <x-slot name="header">
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Historial — {{ $estudiante->nombreCompleto() }}</h2>
@@ -11,6 +24,7 @@
 
     <div class="py-8">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
+            {{-- Datos básicos del estudiante: código, curso actual y responsables. --}}
             <div class="bg-white shadow-sm rounded-lg p-6 text-sm">
                 <dl class="grid sm:grid-cols-3 gap-4">
                     <div>
@@ -23,12 +37,16 @@
                     </div>
                     <div>
                         <dt class="text-slate-500">Responsables</dt>
+                        {{-- Unimos los nombres de los responsables separados por coma; si no tiene ninguno se muestra un guion. --}}
                         <dd class="font-medium">{{ $estudiante->responsables->pluck('name')->join(', ') ?: '—' }}</dd>
                     </div>
                 </dl>
             </div>
 
-            {{-- §7: inscripciones por gestión — repetir curso no pierde historial --}}
+            {{--
+                Inscripciones por gestión. Cada año escolar queda guardado como una inscripción
+                aparte, por eso si un estudiante repite curso no se pierde su historial anterior.
+            --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <h3 class="font-semibold text-slate-800 mb-4">Inscripciones por gestión</h3>
                 <div class="overflow-x-auto">
@@ -59,9 +77,14 @@
                 </div>
             </div>
 
+            {{-- Línea de tiempo con todos los eventos del estudiante. --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <div class="flex flex-wrap justify-between items-center mb-4 gap-2">
                     <h3 class="font-semibold text-slate-800">Línea de tiempo</h3>
+                    {{--
+                        Si el rol del usuario no puede ver datos confidenciales (por ejemplo, ciertas
+                        incidencias), el controlador ya los filtró y aquí solo avisamos de esa restricción.
+                    --}}
                     @unless ($verConfidenciales)
                         <p class="text-xs text-slate-500">Se muestra únicamente la información autorizada para su rol (§7).</p>
                     @endunless
@@ -78,6 +101,10 @@
                         <tbody>
                             @forelse ($eventos as $evento)
                                 <tr class="border-b border-slate-100">
+                                    {{--
+                                        La fecha puede llegar como objeto Carbon o como texto según el módulo
+                                        de origen; en ambos casos la mostramos con el formato día/mes/año.
+                                    --}}
                                     <td class="py-2.5 pr-3 whitespace-nowrap">
                                         {{ $evento['fecha'] instanceof \Illuminate\Support\Carbon ? $evento['fecha']->format('d/m/Y') : \Illuminate\Support\Carbon::parse($evento['fecha'])->format('d/m/Y') }}
                                     </td>

@@ -23,17 +23,33 @@ use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 /**
- * Reportes (§16).
+ * Controlador del módulo de reportes.
  *
- * Regla confirmada: los totales de PDF y Excel son IDÉNTICOS a los de pantalla
- * porque las tres salidas consumen `ReporteService` (que reutiliza
- * `EstadisticaAsistencia` y `AporteService::estadoDeCuenta()` + `Dinero`).
+ * Genera los reportes del sistema: listados simples (estudiantes, asistencia
+ * diaria, salidas, incidencias, citaciones, cuentas y pagos) y reportes
+ * oficiales que se pueden ver en pantalla y también descargar en PDF y Excel
+ * (asistencia por curso y aporte económico por curso o por alumno).
  *
- * Alcance (§6): el docente solo reporta sus cursos asignados; el módulo exige
- * `reportes.ver`. Los reportes económicos exigen además `aporte.cuotas.ver`.
+ * Una regla importante es que los totales del PDF y del Excel tienen que ser
+ * idénticos a los de la pantalla. Para garantizarlo, las tres salidas obtienen
+ * sus datos del mismo lugar: ReporteService, que a su vez reutiliza
+ * EstadisticaAsistencia, AporteService::estadoDeCuenta() y la clase Dinero.
+ *
+ * En cuanto a permisos, el módulo exige "reportes.ver" (el reporte de
+ * asistencia por curso también acepta "asistencia.ver"). El docente solo
+ * puede reportar sus cursos asignados y los reportes económicos exigen
+ * además el permiso "aporte.cuotas.ver".
  */
 class ReporteController extends Controller
 {
+    /**
+     * Muestra la pantalla principal de reportes.
+     *
+     * Se envían los cursos que el usuario puede ver, las gestiones para los
+     * filtros y un indicador para mostrar u ocultar la sección económica.
+     *
+     * @return View Vista índice de reportes.
+     */
     public function index(Request $request): View
     {
         return view('reportes.index', [
@@ -44,6 +60,11 @@ class ReporteController extends Controller
         ]);
     }
 
+    /**
+     * Reporte con el listado de todos los estudiantes y su curso.
+     *
+     * @return View Vista del reporte de estudiantes ordenado por apellidos.
+     */
     public function estudiantes(): View
     {
         $estudiantes = Estudiante::with('curso')->orderBy('apellidos')->get();
@@ -51,6 +72,13 @@ class ReporteController extends Controller
         return view('reportes.estudiantes', compact('estudiantes'));
     }
 
+    /**
+     * Reporte de la asistencia registrada en un día.
+     *
+     * Si no se indica una fecha, se muestra la asistencia del día de hoy.
+     *
+     * @return View Vista del reporte de asistencia diaria.
+     */
     public function asistencia(Request $request): View
     {
         $fecha = $request->input('fecha', now()->toDateString());
@@ -59,6 +87,11 @@ class ReporteController extends Controller
         return view('reportes.asistencia', compact('asistencias', 'fecha'));
     }
 
+    /**
+     * Reporte de las salidas de estudiantes, de la más reciente a la más antigua.
+     *
+     * @return View Vista del reporte de salidas.
+     */
     public function salidas(): View
     {
         $salidas = SalidaEstudiante::with('estudiante')->latest('fecha')->get();
@@ -66,10 +99,18 @@ class ReporteController extends Controller
         return view('reportes.salidas', compact('salidas'));
     }
 
+    /**
+     * Reporte de incidencias.
+     *
+     * Las incidencias confidenciales solo se incluyen si el usuario tiene el
+     * permiso "incidencias.confidenciales", que es exclusivo de
+     * Administración. A cualquier otro rol nunca le llegan esos casos.
+     *
+     * @return View Vista del reporte de incidencias.
+     */
     public function incidencias(Request $request): View
     {
-        // §11/§20.8: las confidenciales solo las ve Administración
-        // (permiso incidencias.confidenciales); ningún otro rol las recibe.
+        // Si el usuario no puede ver confidenciales, las excluimos directamente en la consulta.
         $incidencias = Incidencia::with(['estudiante', 'categoria'])
             ->when(! $request->user()->can('incidencias.confidenciales'),
                 fn ($q) => $q->where('confidencial', false))
@@ -79,6 +120,11 @@ class ReporteController extends Controller
         return view('reportes.incidencias', compact('incidencias'));
     }
 
+    /**
+     * Reporte de citaciones a padres de familia.
+     *
+     * @return View Vista del reporte de citaciones.
+     */
     public function citaciones(): View
     {
         $citaciones = Citacion::with(['estudiante', 'padre'])->latest('fecha')->get();
@@ -86,6 +132,14 @@ class ReporteController extends Controller
         return view('reportes.citaciones', compact('citaciones'));
     }
 
+    /**
+     * Reporte de cuentas por cobrar.
+     *
+     * Solo se incluyen los cargos que todavía tienen saldo, es decir, los
+     * que están en estado "pendiente" o "parcial".
+     *
+     * @return View Vista del reporte de cuentas pendientes.
+     */
     public function cuentas(): View
     {
         $cargos = CargoCuenta::with(['padre', 'estudiante'])->whereIn('estado', ['pendiente', 'parcial'])->get();
@@ -93,6 +147,14 @@ class ReporteController extends Controller
         return view('reportes.cuentas', compact('cargos'));
     }
 
+    /**
+     * Reporte de pagos confirmados.
+     *
+     * Solo se incluyen los pagos ya confirmados por un operador, porque son
+     * los únicos que realmente cuentan como dinero recibido.
+     *
+     * @return View Vista del reporte de pagos.
+     */
     public function pagos(): View
     {
         $pagos = Pago::with(['padre', 'cargo'])->where('estado', 'confirmado')->latest()->get();
@@ -101,22 +163,33 @@ class ReporteController extends Controller
     }
 
     // =====================================================================
-    // Reportes con PDF/Excel y totales idénticos a pantalla (§16, Etapa 5)
+    // Reportes con PDF/Excel y totales idénticos a los de pantalla
     // =====================================================================
 
-    /** Asistencia por curso/turno/rango: pantalla con los mismos datos del PDF/Excel. */
+    /**
+     * Reporte de asistencia por curso, turno y rango de fechas (en pantalla).
+     *
+     * Usa exactamente los mismos datos que el PDF y el Excel. Si se entra sin
+     * filtros, se toman valores por defecto razonables (el primer curso
+     * visible y el mes en curso) para que la pantalla se pueda abrir
+     * directamente desde el índice de reportes.
+     *
+     * @return View Vista del reporte de asistencia por curso.
+     */
     public function asistenciaCurso(Request $request): View
     {
         $cursos = $this->cursosVisibles($request);
 
-        // Sin parámetros: valores por defecto razonables (primer curso visible,
-        // mes en curso) para que la pantalla abra desde el índice de reportes.
+        // Si no se eligió curso y el usuario no tiene ningún curso visible, mostramos
+        // la pantalla vacía en lugar de un error.
         if (! $request->filled('curso_id') && $cursos->isEmpty()) {
             return view('reportes.asistencia_curso', [
                 'data' => null, 'cursos' => $cursos, 'filtro' => [],
             ]);
         }
 
+        // Si no se eligió curso, completamos los filtros con valores por defecto: el primer
+        // curso visible, su turno (o "mañana" si no está definido) y desde el inicio del mes hasta hoy.
         if (! $request->filled('curso_id')) {
             $curso = $cursos->first();
             $request->merge([
@@ -127,6 +200,7 @@ class ReporteController extends Controller
             ]);
         }
 
+        // Validamos los filtros y comprobamos que el usuario pueda reportar ese curso.
         $data = $this->validarAsistencia($request);
 
         return view('reportes.asistencia_curso', [
@@ -136,6 +210,14 @@ class ReporteController extends Controller
         ]);
     }
 
+    /**
+     * Genera el PDF del reporte de asistencia por curso.
+     *
+     * El nombre del archivo incluye el curso y el rango de fechas para que
+     * sea fácil identificarlo después de descargarlo.
+     *
+     * @return BinaryFileResponse|\Illuminate\Http\Response PDF que se abre en el navegador.
+     */
     public function asistenciaCursoPdf(Request $request): BinaryFileResponse|\Illuminate\Http\Response
     {
         $data = $this->validarAsistencia($request);
@@ -146,6 +228,11 @@ class ReporteController extends Controller
         return $pdf->stream('asistencia-'.$data['curso']->id.'-'.$data['filtro']['desde'].'_'.$data['filtro']['hasta'].'.pdf');
     }
 
+    /**
+     * Genera el Excel del reporte de asistencia por curso.
+     *
+     * @return BinaryFileResponse Archivo .xlsx para descargar.
+     */
     public function asistenciaCursoExcel(Request $request): BinaryFileResponse
     {
         $data = $this->validarAsistencia($request);
@@ -157,7 +244,14 @@ class ReporteController extends Controller
         );
     }
 
-    /** Económico por curso: pantalla con totales (misma fuente que PDF/Excel). */
+    /**
+     * Reporte económico del aporte agrupado por curso (en pantalla).
+     *
+     * Muestra los totales por curso de la gestión elegida, usando la misma
+     * fuente de datos que el PDF y el Excel. Requiere el permiso "aporte.cuotas.ver".
+     *
+     * @return View Vista del reporte de aporte por curso.
+     */
     public function aporteCurso(Request $request): View
     {
         abort_unless($request->user()->can('aporte.cuotas.ver'), 403);
@@ -170,6 +264,11 @@ class ReporteController extends Controller
         ]);
     }
 
+    /**
+     * Genera el PDF del reporte de aporte por curso.
+     *
+     * @return BinaryFileResponse|\Illuminate\Http\Response PDF que se abre en el navegador.
+     */
     public function aporteCursoPdf(Request $request): BinaryFileResponse|\Illuminate\Http\Response
     {
         abort_unless($request->user()->can('aporte.cuotas.ver'), 403);
@@ -180,6 +279,11 @@ class ReporteController extends Controller
         return $pdf->stream('aporte-por-curso-'.now()->format('Y-m-d').'.pdf');
     }
 
+    /**
+     * Genera el Excel del reporte de aporte por curso.
+     *
+     * @return BinaryFileResponse Archivo .xlsx para descargar.
+     */
     public function aporteCursoExcel(Request $request): BinaryFileResponse
     {
         abort_unless($request->user()->can('aporte.cuotas.ver'), 403);
@@ -188,7 +292,14 @@ class ReporteController extends Controller
         return Excel::download(new AportePorCursoExport($data), 'aporte-por-curso-'.now()->format('Y-m-d').'.xlsx');
     }
 
-    /** Económico por alumno: pantalla con totales (misma fuente que PDF/Excel). */
+    /**
+     * Reporte económico del aporte detallado por alumno (en pantalla).
+     *
+     * Se puede filtrar por gestión y por curso. Los totales se calculan con
+     * la misma fuente que el PDF y el Excel. Requiere "aporte.cuotas.ver".
+     *
+     * @return View Vista del reporte de aporte por alumno.
+     */
     public function aporteAlumno(Request $request): View
     {
         abort_unless($request->user()->can('aporte.cuotas.ver'), 403);
@@ -205,6 +316,14 @@ class ReporteController extends Controller
         ]);
     }
 
+    /**
+     * Genera el PDF del reporte de aporte por alumno.
+     *
+     * Se usa la hoja en orientación horizontal porque el reporte tiene
+     * muchas columnas y en vertical no entrarían cómodamente.
+     *
+     * @return BinaryFileResponse|\Illuminate\Http\Response PDF que se abre en el navegador.
+     */
     public function aporteAlumnoPdf(Request $request): BinaryFileResponse|\Illuminate\Http\Response
     {
         abort_unless($request->user()->can('aporte.cuotas.ver'), 403);
@@ -218,6 +337,11 @@ class ReporteController extends Controller
         return $pdf->stream('aporte-por-alumno-'.now()->format('Y-m-d').'.pdf');
     }
 
+    /**
+     * Genera el Excel del reporte de aporte por alumno.
+     *
+     * @return BinaryFileResponse Archivo .xlsx para descargar.
+     */
     public function aporteAlumnoExcel(Request $request): BinaryFileResponse
     {
         abort_unless($request->user()->can('aporte.cuotas.ver'), 403);
@@ -234,14 +358,22 @@ class ReporteController extends Controller
 
     // ------------------------------------------------------------------
 
-    /** Validación + autorización por registro del reporte de asistencia (§6). */
+    /**
+     * Valida los filtros del reporte de asistencia y autoriza el acceso al curso.
+     *
+     * La comparten la versión en pantalla, en PDF y en Excel, para que las
+     * tres apliquen exactamente las mismas reglas.
+     *
+     * @return array Curso, turno, rango de fechas y los filtros validados.
+     */
     private function validarAsistencia(Request $request): array
     {
-        // 30/09/2026: el reporte por curso agrega datos de toda la clase; el
-        // responsable familiar (asistencia.ver) verifica a sus hijos en el
-        // listado diario y el historial, no en el reporte institucional (§6).
+        // El reporte por curso muestra datos de toda la clase, así que el responsable
+        // familiar no puede usarlo, aunque tenga "asistencia.ver". Él revisa la asistencia
+        // de sus hijos en el listado diario y en el historial (decisión del 30/09/2026).
         abort_if($request->user()->esResponsableFamiliar(), 403);
 
+        // Validamos el curso, el turno y que la fecha final no sea anterior a la inicial.
         $filtro = $request->validate([
             'curso_id' => ['required', 'exists:cursos,id'],
             'turno' => ['required', 'in:manana,tarde'],
@@ -251,7 +383,7 @@ class ReporteController extends Controller
 
         $curso = Curso::with('gestion')->findOrFail($filtro['curso_id']);
 
-        // §6: docente solo sus cursos asignados.
+        // El docente solo puede reportar los cursos que tiene asignados.
         $user = $request->user();
         if ($user->esDocente() && ! $user->tieneAlcanceInstitucional()) {
             abort_unless($user->tieneCursoAsignado($curso), 403);
@@ -267,10 +399,14 @@ class ReporteController extends Controller
     }
 
     /**
-     * Datos del reporte por alumno, con filtro opcional de curso. Reutiliza
-     * `ReporteService::aportePorAlumno()` (misma fuente para pantalla/PDF/Excel).
+     * Obtiene los datos del reporte de aporte por alumno.
      *
-     * @return array{0: \Illuminate\Support\Collection, 1: array}
+     * Si se indicó un curso, se limitan los alumnos a los inscritos en él;
+     * si no, el servicio trabaja con todos los alumnos de la gestión. Se
+     * reutiliza ReporteService::aportePorAlumno(), que es la misma fuente
+     * para la pantalla, el PDF y el Excel.
+     *
+     * @return array{0: \Illuminate\Support\Collection, 1: array} Filas del reporte y sus totales.
      */
     private function aporteAlumnoData(Request $request, ?Gestion $gestion): array
     {
@@ -279,13 +415,14 @@ class ReporteController extends Controller
 
         if ($cursoId) {
             $curso = Curso::findOrFail($cursoId);
-            // §6: docente solo sus cursos.
+            // El docente solo puede consultar los cursos que tiene asignados.
             $user = $request->user();
             if ($user->esDocente() && ! $user->tieneAlcanceInstitucional()) {
                 abort_unless($user->tieneCursoAsignado($curso), 403);
             }
 
-            // Alumnos del curso por inscripción activa de la gestión (§14).
+            // Tomamos los alumnos del curso según su inscripción activa en la gestión,
+            // ya que la obligación del aporte depende de la inscripción.
             $estudiantes = $curso->estudiantesInscritos()
                 ->orderBy('apellidos')->orderBy('nombres')
                 ->get();
@@ -296,7 +433,14 @@ class ReporteController extends Controller
         return [$reporte['filas'], $reporte['totales']];
     }
 
-    /** Gestión del filtro (query `gestion`) o la actual por defecto. */
+    /**
+     * Determina la gestión que se usará en los reportes económicos.
+     *
+     * Si en la dirección viene el parámetro "gestion" se usa esa; si no, se
+     * toma la gestión actual.
+     *
+     * @return Gestion|null Gestión elegida o null si no existe.
+     */
     private function gestionFiltrada(Request $request): ?Gestion
     {
         if ($id = $request->query('gestion')) {
@@ -306,17 +450,26 @@ class ReporteController extends Controller
         return Gestion::actual();
     }
 
-    /** Cursos visibles según alcance (§6): docente → solo los asignados. */
+    /**
+     * Obtiene los cursos que el usuario puede ver en los reportes.
+     *
+     * Se listan los cursos activos de la gestión actual. Si el usuario es
+     * docente sin alcance institucional, solo se incluyen sus cursos asignados.
+     *
+     * @return \Illuminate\Support\Collection Cursos visibles, ordenados.
+     */
     private function cursosVisibles(Request $request)
     {
         $user = $request->user();
         $gestion = Gestion::actual();
 
+        // Cursos activos de la gestión actual (si existe), en el orden configurado.
         $query = Curso::where('activo', true)
             ->when($gestion, fn ($q) => $q->where('gestion_id', $gestion->id))
             ->orderBy('orden')
             ->orderBy('nombre');
 
+        // Al docente le limitamos la lista a los cursos que tiene asignados.
         if ($user->esDocente() && ! $user->tieneAlcanceInstitucional()) {
             $query->whereIn('cursos.id', Alcance::cursoIdsDocente($user));
         }

@@ -1,7 +1,20 @@
+{{--
+    Vista: Detalle de una citación
+    Muestra todos los datos de una citación: cuándo es, a quién se convoca, el
+    motivo, la incidencia asociada y los acuerdos de seguimiento. Quien gestiona
+    citaciones puede además notificar al responsable y registrar la atención.
+
+    Variables que recibe del controlador:
+    - $citacion: la citación con sus relaciones (estudiante, padre, incidencia, etc.).
+    - $verDetalleIncidencia: true si el usuario puede ver el detalle de la incidencia.
+    - $enlaceWhatsApp: enlace wa.me con el mensaje preparado (puede venir vacío).
+    - $puedeEnviarCorreo: indica si se muestra la opción de enviar correo.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Citación — {{ $citacion->estudiante?->nombreCompleto() }}</h2>
+            {{-- El botón Editar solo aparece para quien tiene permiso de gestionar citaciones --}}
             <div class="flex gap-2">
                 @can('citaciones.gestionar')
                     <a href="{{ route('citaciones.edit', $citacion) }}"><x-secondary-button type="button">Editar</x-secondary-button></a>
@@ -15,6 +28,10 @@
         <div class="max-w-4xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
+            {{--
+                Datos principales de la citación con su estado en color. Si la revisión ya está
+                vencida se muestra una etiqueta roja para que se atienda pronto.
+            --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 @php($colores = ['pendiente' => 'bg-amber-100 text-amber-800', 'atendida' => 'bg-emerald-100 text-emerald-800', 'no_asistio' => 'bg-rose-100 text-rose-800', 'en_seguimiento' => 'bg-sky-100 text-sky-800', 'cerrada' => 'bg-slate-100 text-slate-600', 'cancelada' => 'bg-slate-100 text-slate-600'])
                 <div class="flex flex-wrap items-center gap-3 mb-4">
@@ -50,6 +67,10 @@
                         <dd class="font-medium whitespace-pre-line">{{ $citacion->descripcion ?: '—' }}</dd>
                     </div>
 
+                    {{--
+                        Incidencia asociada. El detalle completo solo se muestra a quien tiene permiso;
+                        los demás, por ejemplo el responsable familiar, solo ven que es un caso reservado.
+                    --}}
                     @if ($citacion->incidencia_id)
                         <div class="sm:col-span-2 border-t border-slate-100 pt-3">
                             <dt class="text-slate-500">Incidencia asociada</dt>
@@ -63,7 +84,7 @@
                                     <div class="mt-1 text-slate-600 whitespace-pre-line">{{ $citacion->incidencia->descripcion }}</div>
                                 </dd>
                             @else
-                                {{-- §11: confidencial — solo Administración ve el detalle; aquí solo la referencia. --}}
+                                {{-- Caso confidencial: solo Administración ve el detalle, aquí se muestra únicamente una referencia --}}
                                 <dd class="font-medium text-slate-500">Caso reservado gestionado por Administración.</dd>
                             @endif
                         </div>
@@ -71,7 +92,11 @@
                 </dl>
             </div>
 
-            {{-- Notificación al responsable (§13): correo opcional + WhatsApp manual --}}
+            {{--
+                Notificación al responsable, solo para quien gestiona citaciones. WhatsApp abre la
+                aplicación con el mensaje listo (el envío es manual) y el correo es opcional; el
+                botón de correo se deshabilita si el responsable no tiene correo registrado.
+            --}}
             @can('citaciones.gestionar')
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-1">Notificar al responsable</h3>
@@ -105,7 +130,10 @@
                 </div>
             @endcan
 
-            {{-- Acuerdos y seguimiento (§12) --}}
+            {{--
+                Acuerdos y seguimiento: quién se encarga, cuándo se revisa y lo que se acordó.
+                Los acuerdos y observaciones solo se muestran si ya fueron registrados.
+            --}}
             <div class="bg-white shadow-sm rounded-lg p-6 space-y-4">
                 <h3 class="font-semibold text-slate-800">Acuerdos y seguimiento</h3>
 
@@ -138,6 +166,10 @@
                     </div>
                 @endif
 
+                {{--
+                    Formulario rápido para registrar el resultado de la reunión (atendida, no asistió,
+                    en seguimiento o cerrada) sin tener que entrar a editar toda la citación.
+                --}}
                 @can('citaciones.gestionar')
                     <form method="POST" action="{{ route('citaciones.seguimiento', $citacion) }}" class="border-t border-slate-100 pt-4 space-y-3">
                         @csrf

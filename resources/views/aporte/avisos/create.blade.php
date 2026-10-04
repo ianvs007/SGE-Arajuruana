@@ -1,4 +1,15 @@
+{{--
+    Vista: Informar un pago (aviso de pago)
+    Pantalla que usa el responsable familiar para avisar a la unidad educativa
+    que realizó un pago del aporte. El aviso es solo una nota escrita con el
+    monto; la deuda no cambia hasta que Administración lo valide.
+
+    Variables que recibe del controlador:
+    - $cuotasPendientes: cuotas con saldo de los hijos del responsable.
+    - $totalPendiente: suma en centavos de esas cuotas.
+--}}
 <x-app-layout>
+    {{-- Cabecera con el título y el botón para volver al listado de avisos --}}
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Informar un pago (§14)</h2>
@@ -8,14 +19,21 @@
 
     <div class="py-8">
         <div class="max-w-3xl mx-auto sm:px-6 lg:px-8 space-y-4">
+            {{-- Mensajes de éxito o error que vienen de la sesión --}}
             @include('partials.flash')
 
+            {{-- Explicación breve del proceso para que el responsable sepa qué pasará con su aviso --}}
             <div class="bg-sky-50 border border-sky-200 text-sky-900 px-4 py-3 rounded text-sm">
                 <strong>Cómo funciona:</strong> usted informa el pago realizado con una <strong>nota escrita</strong>
                 (no se adjuntan archivos ni imágenes). Administración lo validará contra el depósito real;
                 <strong>la deuda no cambia hasta la validación</strong>. No se genera comprobante con el aviso pendiente.
             </div>
 
+            {{--
+                Si los hijos tienen cuotas pendientes, se listan como referencia para que el
+                responsable sepa cuánto debe; las vencidas se marcan en rojo. Si no hay cuotas,
+                igual se permite informar un pago (por ejemplo, un anticipo).
+            --}}
             @if ($cuotasPendientes->isNotEmpty())
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-3 text-sm">Cuotas pendientes de sus representados</h3>
@@ -42,6 +60,10 @@
                 </div>
             @endif
 
+            {{--
+                Formulario del aviso: solo pide el monto pagado y una nota opcional.
+                A propósito no se permiten archivos adjuntos, para simplificar el proceso.
+            --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <form method="POST" action="{{ route('aporte.avisos.store') }}" class="space-y-4">
                     @csrf
@@ -66,6 +88,7 @@
                         <x-input-error :messages="$errors->get('nota')" class="mt-2" />
                     </div>
 
+                    {{-- Botones para guardar el aviso o cancelar y volver al listado --}}
                     <div class="flex items-center gap-3">
                         <x-primary-button>Registrar aviso</x-primary-button>
                         <a href="{{ route('aporte.avisos.index') }}"><x-secondary-button type="button">Cancelar</x-secondary-button></a>

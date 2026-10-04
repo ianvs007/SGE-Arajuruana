@@ -1,8 +1,16 @@
+{{--
+    Vista: Confirmar contraseña
+    Se muestra cuando el usuario intenta entrar a una zona protegida que pide
+    volver a escribir la contraseña como medida de seguridad adicional.
+    No recibe variables propias del controlador.
+--}}
 <x-guest-layout>
+    {{-- Mensaje que explica por qué se pide de nuevo la contraseña --}}
     <div class="mb-4 text-sm text-gray-600">
         {{ __('This is a secure area of the application. Please confirm your password before continuing.') }}
     </div>
 
+    {{-- Formulario que verifica la contraseña actual antes de continuar --}}
     <form method="POST" action="{{ route('password.confirm') }}">
         @csrf
 

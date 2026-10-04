@@ -1,7 +1,18 @@
+{{--
+    Vista: Listado de pagos validados
+    Muestra los pagos del aporte que ya fueron confirmados por Administración,
+    cada uno con su número de comprobante interno. El responsable familiar ve
+    solo sus pagos; el personal administrativo ve todos y puede filtrarlos.
+
+    Variables que recibe del controlador:
+    - $pagos: pagos paginados.
+    - $estadoFiltro: estado seleccionado en el filtro (validado o anulado).
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Pagos validados (§14)</h2>
+            {{-- Solo Administración puede registrar pagos recibidos directamente en ventanilla --}}
             @can('aporte.avisos.gestionar')
                 <a href="{{ route('aporte.pagos.create') }}"><x-primary-button type="button">Registrar pago en ventanilla</x-primary-button></a>
             @endcan
@@ -13,6 +24,7 @@
             @include('partials.flash')
 
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{-- El filtro por estado no se muestra a la familia, ya que solo ve sus propios pagos --}}
                 @if (! auth()->user()->esResponsableFamiliar())
                     <form method="GET" class="mb-4 flex items-end gap-3">
                         <div>
@@ -28,6 +40,10 @@
                     </form>
                 @endif
 
+                {{--
+                    Tabla de pagos. Los anulados se muestran atenuados para distinguirlos, y la
+                    columna del responsable solo aparece para el personal de la unidad educativa.
+                --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
@@ -67,6 +83,7 @@
                         </tbody>
                     </table>
                 </div>
+                {{-- Enlaces de paginación --}}
                 <div class="mt-4">{{ $pagos->links() }}</div>
             </div>
         </div>

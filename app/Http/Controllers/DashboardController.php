@@ -19,35 +19,60 @@ use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 /**
- * Panel por rol (§16): solo datos útiles y autorizados.
- * - Administración/Dirección: resumen institucional (incluye avisos pendientes
- *   de validación y recaudación del aporte, §14).
- * - Docente: acotado a sus cursos asignados.
- * - Responsable familiar: solo lo propio y de sus representados (deuda de
- *   aporte por hijo y sus avisos; §14: la obligación es del alumno).
- * - §11: el conteo de incidencias confidenciales NO se muestra a quien
- *   no tiene incidencias.confidenciales (ni siquiera como número agregado).
+ * Controlador del panel principal (dashboard) que se muestra al iniciar sesión.
+ *
+ * El panel cambia según el rol del usuario y solo muestra datos útiles y
+ * autorizados para cada perfil:
+ *
+ * - Administración, Director, Coordinadora y Subdirector: resumen
+ *   institucional con conteos generales. Si además tienen acceso al módulo
+ *   económico, se agregan los avisos de pago pendientes de validación y la
+ *   recaudación del aporte de la gestión.
+ * - Docente: los datos se limitan a los cursos que tiene asignados.
+ * - Responsable familiar: solo ve lo propio y lo de sus representados, como
+ *   la deuda de aporte de cada hijo y sus avisos de pago. Recordemos que la
+ *   obligación del aporte es del alumno, por eso la deuda se muestra por hijo.
+ *
+ * El conteo de incidencias confidenciales no se muestra a quien no tiene el
+ * permiso `incidencias.confidenciales`, ni siquiera como número agregado,
+ * para no revelar indirectamente que existen casos reservados.
+ *
+ * La ruta `/dashboard` está disponible para cualquier usuario autenticado.
  */
 class DashboardController extends Controller
 {
+    /**
+     * Arma los datos del panel según el rol del usuario y devuelve la vista.
+     *
+     * Primero se cargan los avisos institucionales recibidos, que son comunes a
+     * todos los perfiles. Después, según el rol, se calcula un arreglo de
+     * estadísticas distinto: uno para la familia, otro para el docente y otro
+     * para el personal institucional.
+     *
+     * @return View Vista `dashboard` con las estadísticas y listados del rol.
+     */
     public function __invoke(Request $request): View
     {
         $user = $request->user();
 
+        // Inicializamos todas las variables que usa la vista con valores vacíos,
+        // porque cada rol solo llena algunas y la vista espera recibirlas todas.
         $misEstudiantes = collect();
         $misCargos = collect();
         $misCitaciones = collect();
         $misPagos = collect();
         $misSalidasAbiertas = null;
-        $deudaPorHijo = collect();   // Etapa 4 (§14): saldo de aporte por representado
-        $misAvisos = collect();      // Etapa 4: avisos recientes del responsable
-        $avisosRecientes = collect(); // Etapa 5 (§13): avisos institucionales recibidos
+        $deudaPorHijo = collect();   // saldo del aporte por cada representado
+        $misAvisos = collect();      // avisos de pago recientes del responsable
+        $avisosRecientes = collect(); // avisos institucionales (comunicados) recibidos
         $avisosSinLeer = 0;
-        $avisosPorConfirmar = 0;      // opcionales, no bloqueantes (§13)
+        $avisosPorConfirmar = 0;      // confirmaciones de lectura opcionales, no bloquean nada
 
         /**
-         * Etapa 5 (§13): avisos recibidos por el usuario (cualquier rol),
-         * materializados como destinatario. Se comparten en todos los paneles.
+         * Avisos institucionales recibidos por el usuario, sea cual sea su rol.
+         * Cada aviso se guarda como un registro de destinatario por usuario, por
+         * eso los consultamos desde esa relación. Se muestran en todos los paneles.
+         * Tomamos los seis más recientes, solo de avisos ya publicados.
          */
         $recibidos = $user->avisosRecibidos()
             ->with('aviso')
@@ -55,7 +80,10 @@ class DashboardController extends Controller
             ->latest()
             ->take(6)
             ->get();
+        // Descartamos por seguridad los destinatarios cuyo aviso ya no existe.
         $avisosRecientes = $recibidos->filter(fn ($d) => $d->aviso !== null);
+        // Contamos los avisos publicados que el usuario todavía no ha leído y
+        // los que esperan su confirmación de lectura.
         $avisosSinLeer = $user->avisosRecibidos()
             ->whereNull('leido_en')
             ->whereHas('aviso', fn ($q) => $q->where('publicado', true))
@@ -64,15 +92,21 @@ class DashboardController extends Controller
 
         if ($user->esResponsableFamiliar()) {
             // ---------- Responsable familiar: solo lo propio ----------
+            // Sus representados (hijos) con el curso en el que están.
             $misEstudiantes = $user->estudiantes()->with('curso')->get();
             $idsHijos = $misEstudiantes->pluck('id');
 
+            // Últimos cinco registros de cada tipo que pertenecen al responsable:
+            // cargos y pagos del módulo antiguo, citaciones y avisos de pago.
             $misCargos = CargoCuenta::where('padre_id', $user->id)->latest()->take(5)->get();
             $misCitaciones = Citacion::where('padre_id', $user->id)->latest('fecha')->take(5)->get();
             $misPagos = Pago::where('padre_id', $user->id)->latest()->take(5)->get();
             $misAvisos = AvisoPago::where('padre_id', $user->id)->latest('informado_en')->take(5)->get();
 
-            // Deuda de aporte por hijo (gestión actual; centavos, §14).
+            // Deuda de aporte de cada hijo en la gestión actual, en centavos.
+            // Reutilizamos el estado de cuenta del servicio para que el panel
+            // muestre exactamente las mismas cifras que la pantalla de detalle.
+            // Al final solo dejamos a los hijos que efectivamente deben algo.
             $deudaPorHijo = $misEstudiantes->map(function ($estudiante) {
                 $estado = AporteService::estadoDeCuenta($estudiante, Gestion::actual());
 
@@ -85,6 +119,7 @@ class DashboardController extends Controller
                 ];
             })->filter(fn ($fila) => $fila['saldo'] > 0)->values();
 
+            // Indicadores de las tarjetas del panel familiar.
             $stats = [
                 'mis_hijos' => $misEstudiantes->count(),
                 'citaciones_pendientes' => Citacion::where('padre_id', $user->id)->where('estado', 'pendiente')->count(),
@@ -93,15 +128,23 @@ class DashboardController extends Controller
                 'pagos_revision' => Pago::where('padre_id', $user->id)->whereIn('estado', ['pendiente', 'en_revision'])->count(),
                 'cargos_pendientes' => CargoCuenta::where('padre_id', $user->id)->whereIn('estado', ['pendiente', 'parcial'])->count(),
             ];
+            // Saldo pendiente de los cargos del módulo antiguo mostrados arriba.
             $stats['mi_saldo'] = $misCargos->sum(fn ($c) => $c->montoPendiente());
 
+            // Salidas de sus hijos que todavía están abiertas (sin cerrar el
+            // retorno o la autorización), para que el responsable las tenga a la vista.
             $misSalidasAbiertas = SalidaEstudiante::whereIn('estudiante_id', $idsHijos)
                 ->whereIn('estado', SalidaEstudiante::ESTADOS_ABIERTOS)
                 ->latest('fecha')->take(5)->get();
         } elseif ($user->esDocente() && ! $user->tieneAlcanceInstitucional()) {
             // ---------- Docente: acotado a sus cursos asignados ----------
+            // Esta rama solo aplica al docente que no tiene además un rol con
+            // alcance institucional. Obtenemos los alumnos de sus cursos
+            // mediante la clase Alcance, que centraliza esa regla.
             $idsAlumnos = Alcance::estudiantes($user)->pluck('estudiantes.id');
 
+            // Todos los conteos se filtran por sus alumnos; en las citaciones se
+            // incluyen además las que el propio docente generó.
             $stats = [
                 'mis_cursos' => Alcance::cursoIdsDocente($user) ? count(Alcance::cursoIdsDocente($user)) : 0,
                 'mis_alumnos' => $idsAlumnos->count(),
@@ -112,9 +155,13 @@ class DashboardController extends Controller
                 'salidas_abiertas' => SalidaEstudiante::whereIn('estado', SalidaEstudiante::ESTADOS_ABIERTOS)
                     ->whereIn('estudiante_id', $idsAlumnos)->count(),
             ];
-            // §11: el docente NO ve conteos de incidencias (módulo de Administración).
+            // El docente no ve conteos de incidencias en su panel, porque ese
+            // módulo lo administra la institución.
         } else {
             // ---------- Institucional: Administración / Dirección / Coord. / Subdirección ----------
+            // Conteos generales de toda la unidad educativa. Las citaciones con
+            // revisión vencida son las atendidas o en seguimiento cuya fecha de
+            // revisión ya llegó y necesitan volver a revisarse.
             $stats = [
                 'estudiantes' => Estudiante::where('estado', 'activo')->count(),
                 'usuarios' => User::where('activo', true)->count(),
@@ -130,10 +177,15 @@ class DashboardController extends Controller
                 'cargos_pendientes' => CargoCuenta::whereIn('estado', ['pendiente', 'parcial'])->count(),
             ];
 
-            // Etapa 4 (§14): solo quien ve el módulo económico.
+            // Los datos del aporte solo se muestran a quien tiene acceso al
+            // módulo económico; por ejemplo, el Subdirector no los ve.
             if ($user->can('aporte.cuotas.ver')) {
                 $stats['avisos_pago_pendientes'] = AvisoPago::where('estado', 'pendiente')->count();
 
+                // Recorremos las cuotas de la gestión actual (sin las exentas,
+                // que no generan deuda) y acumulamos en centavos lo recaudado y
+                // el saldo de las cuotas que ya pasaron su fecha de vencimiento.
+                // Pedimos solo las columnas necesarias para aligerar la consulta.
                 $hoy = now()->toDateString();
                 $recaudado = 0;
                 $vencido = 0;
@@ -150,8 +202,9 @@ class DashboardController extends Controller
                 $stats['aporte_vencido_centavos'] = $vencido;
             }
 
-            // §11: conteo de incidencias visible solo con permiso del módulo;
-            // las confidenciales solo se cuentan para quien puede verlas.
+            // El conteo de incidencias abiertas solo aparece para quien gestiona
+            // ese módulo, y las confidenciales solo se suman si el usuario tiene
+            // permiso para verlas; de lo contrario se excluyen del número.
             if ($user->can('incidencias.gestionar')) {
                 $stats['incidencias_abiertas'] = Incidencia::whereIn('estado_seguimiento', ['abierta', 'en_seguimiento'])
                     ->when(! $user->can('incidencias.confidenciales'), fn ($q) => $q->where('confidencial', false))
@@ -159,6 +212,8 @@ class DashboardController extends Controller
             }
         }
 
+        // Enviamos a la vista todas las variables; la plantilla decide qué
+        // bloques mostrar según los datos y el rol del usuario.
         return view('dashboard', compact(
             'stats', 'misEstudiantes', 'misCargos', 'misCitaciones', 'misPagos',
             'misSalidasAbiertas', 'deudaPorHijo', 'misAvisos',

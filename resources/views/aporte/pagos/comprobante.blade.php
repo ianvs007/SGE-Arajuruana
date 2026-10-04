@@ -1,15 +1,24 @@
 {{--
-    Comprobante interno PDF (§15).
-    Reglas confirmadas:
-    - Identificación única (comprobante_numero), sin valor fiscal.
-    - SIN CUF, SIN apariencia de factura ni de documento tributario.
-    - Si el pago está anulado, se marca claramente ANULADO (no desaparece).
-    - Mismos totales que la pantalla (centavos → formato).
-    - El QR impreso es SIMULADO y se marca como demostración (§20.16).
+    Vista: Comprobante interno de pago (PDF)
+    Esta plantilla no se muestra en el navegador como las demás: el controlador
+    la convierte en PDF con DomPDF para que el responsable o Administración la
+    descarguen o impriman. Por eso es un documento HTML completo con sus estilos
+    propios, sin usar el layout del sistema.
+
+    Variables que recibe del controlador:
+    - $pago: el pago con su gestión, padre, confirmador, aviso, aplicaciones y anulación.
+
+    Reglas que tomamos en cuenta al diseñarlo:
+    - Cada comprobante tiene un número único, pero no tiene valor fiscal: no lleva
+      CUF ni se parece a una factura.
+    - Si el pago fue anulado, el comprobante no desaparece; se marca como ANULADO.
+    - Los totales se calculan igual que en la pantalla (a partir de centavos).
+    - El QR del sistema es solo de demostración y así se aclara en el pie.
 --}}
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    {{-- Estilos incrustados: DomPDF no carga Tailwind, así que todo el diseño se define aquí. Se usa DejaVu Sans para que salgan bien las tildes y la ñ --}}
     <meta charset="utf-8">
     <style>
         * { font-family: DejaVu Sans, sans-serif; }
@@ -42,6 +51,7 @@
     </style>
 </head>
 <body>
+    {{-- Cabecera con el logo institucional (incrustado en base64 para que DomPDF lo pueda dibujar) y los datos del colegio --}}
     <div class="cabecera">
         <table><tr>
             <td style="width: 64px; vertical-align: top;">@include('reportes._logo', ['base64' => true])</td>
@@ -54,23 +64,27 @@
         </tr></table>
     </div>
 
+    {{-- Franja roja que solo aparece si el pago fue anulado, junto con el motivo --}}
     @if ($pago->estado === 'anulado')
         <div class="anulado">
             COMPROBANTE ANULADO{{ $pago->anulacion ? ' — '.$pago->anulacion->motivo : '' }}
         </div>
     @endif
 
+    {{-- Título del documento con su número de comprobante y la referencia --}}
     <div class="titulo-doc">
         <div class="tipo">COMPROBANTE INTERNO DE APORTE</div>
         <div class="numero">N.º {{ $pago->comprobante_numero }} · Ref. {{ $pago->referencia }}</div>
     </div>
 
+    {{-- Leyenda obligatoria que deja claro que no es una factura --}}
     <div class="aviso-fiscal">
         COMPROBANTE INTERNO — NO VÁLIDO COMO FACTURA FISCAL.
         Documento de control interno de la Unidad Educativa; no constituye documento tributario
         ni acredita derecho a crédito fiscal.
     </div>
 
+    {{-- Datos generales del pago; la nota y la observación solo se imprimen si existen --}}
     <table class="datos">
         <tr>
             <td class="etiqueta">Fecha de validación</td>
@@ -104,6 +118,7 @@
         @endif
     </table>
 
+    {{-- Detalle de cómo se aplicó el pago a cada cuota; se va acumulando la suma para el total --}}
     <table class="detalle">
         <thead>
             <tr>
@@ -133,6 +148,7 @@
         </tfoot>
     </table>
 
+    {{-- Pie con la fecha de generación, aclaraciones y el espacio para la firma --}}
     <div class="pie">
         Documento generado electrónicamente por el Sistema de Gestión Educativa el
         {{ now()->format('d/m/Y H:i') }} (hora de Bolivia).

@@ -1,3 +1,11 @@
+{{--
+    Reporte imprimible: salidas de estudiantes.
+    Lista las salidas anticipadas registradas (cuando un estudiante se retira antes de la hora
+    de salida), con la fecha, la hora, el motivo y la persona que lo recogió.
+    Recibe del controlador $salidas (colección con su estudiante).
+    Lo usa el personal con acceso a reportes.
+--}}
+{{-- Encabezado común de los reportes imprimibles, con el total de salidas. --}}
 @include('reportes._print_header', ['titulo' => 'Reporte de salidas', 'subtitulo' => 'Total: '.$salidas->count()])
 
 <div class="table-wrap">
@@ -12,6 +20,7 @@
         </tr>
     </thead>
     <tbody>
+        {{-- Una salida por fila; la hora se muestra sin segundos (HH:MM). --}}
         @forelse ($salidas as $salida)
             <tr>
                 <td>{{ optional($salida->fecha)->format('d/m/Y') }}</td>

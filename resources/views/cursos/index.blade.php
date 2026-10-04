@@ -1,7 +1,19 @@
+{{--
+    Vista: Listado de cursos
+    Muestra los cursos de una gestión (año escolar) con su nivel, paralelo,
+    turno, cantidad de inscritos y si están activos. La usa la dirección para
+    administrar los cursos de la unidad educativa.
+
+    Variables que recibe del controlador:
+    - $cursos: cursos paginados de la gestión, con el conteo de inscritos.
+    - $gestiones: lista de gestiones para el selector.
+    - $gestion: la gestión que se está viendo.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Cursos</h2>
+            {{-- El nuevo curso se crea dentro de la gestión seleccionada, por eso se envía su id --}}
             <a href="{{ route('cursos.create', ['gestion_id' => $gestion->id]) }}"><x-primary-button type="button">Nuevo curso</x-primary-button></a>
         </div>
     </x-slot>
@@ -11,6 +23,10 @@
             @include('partials.flash')
 
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{--
+                    Selector de gestión: al cambiarlo se envía el formulario y se recarga el listado.
+                    Si la gestión elegida es la actual, se muestra una etiqueta verde.
+                --}}
                 <form method="GET" class="mb-4 flex flex-wrap gap-3 items-end">
                     <div class="min-w-52">
                         <x-input-label for="gestion_id" value="Gestión" />
@@ -26,6 +42,7 @@
                     @endif
                 </form>
 
+                {{-- Tabla de cursos con su estado y un enlace para configurar cada uno --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead class="bg-slate-50 text-slate-500 text-left">
@@ -68,6 +85,7 @@
                         </tbody>
                     </table>
                 </div>
+                {{-- Paginación; withQueryString conserva la gestión elegida al cambiar de página --}}
                 <div class="mt-4">{{ $cursos->withQueryString()->links() }}</div>
             </div>
         </div>

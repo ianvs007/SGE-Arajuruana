@@ -1,5 +1,14 @@
+{{--
+    Componente: x-responsive-nav-link
+    Versión del enlace de navegación para el menú móvil (pantallas pequeñas).
+    Se usa dentro del menú tipo hamburguesa de la barra de navegación.
+
+    Props: active (booleano) resalta el enlace con un borde lateral cuando es la
+    página actual. El resto de atributos se pasan a la etiqueta <a>.
+--}}
 @props(['active'])
 
+{{-- Clases distintas para el enlace activo y para los inactivos --}}
 @php
 $classes = ($active ?? false)
             ? 'block w-full ps-3 pe-4 py-2 border-l-4 border-indigo-400 text-start text-base font-medium text-indigo-700 bg-indigo-50 focus:outline-none focus:text-indigo-800 focus:bg-indigo-100 focus:border-indigo-700 transition duration-150 ease-in-out'

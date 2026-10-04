@@ -1,3 +1,18 @@
+{{--
+    Vista: Detalle de un aviso
+    Muestra el contenido completo de un aviso. Para el destinatario sirve para
+    leerlo y, si se pide, confirmar la lectura. Para quien lo emitió (dirección
+    o secretaría) muestra además las herramientas de difusión y el seguimiento
+    de lecturas, confirmaciones y envíos de correo.
+
+    Variables que recibe del controlador:
+    - $aviso: el aviso consultado.
+    - $miDestino: registro del usuario actual como destinatario (null si no lo es).
+    - $esEmisor: true si el usuario puede gestionar este aviso.
+    - $enlaceWhatsApp: enlace wa.me con el texto del aviso ya preparado.
+    - $progreso: totales de destinatarios, leídos y confirmados.
+    - $destinatarios: lista de destinatarios con su estado.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
@@ -10,6 +25,7 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-4">
             @include('partials.flash')
 
+            {{-- Cuerpo del aviso: etiquetas de estado y tipo, destinatarios, fecha, autor y contenido --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
                 <div class="flex items-center gap-2 flex-wrap mb-3">
                     <span class="text-xs px-2 py-0.5 rounded {{ $aviso->publicado ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600' }}">
@@ -27,7 +43,10 @@
 
                 <p class="text-sm text-slate-800 whitespace-pre-line">{{ $aviso->contenido }}</p>
 
-                {{-- Confirmación de lectura OPCIONAL del destinatario (§13) --}}
+                {{--
+                    Zona de confirmación, visible solo si el usuario es destinatario. Si el aviso pide
+                    confirmación, se muestra el botón o la fecha en que ya confirmó. Confirmar es opcional.
+                --}}
                 @if ($miDestino)
                     <div class="mt-4 border-t border-slate-200 pt-4 flex flex-wrap items-center gap-3">
                         @if ($aviso->requiere_confirmacion)
@@ -57,7 +76,10 @@
             </div>
 
             @if ($esEmisor)
-                {{-- Herramientas del emisor: publicar, correo opcional y WhatsApp manual (§13) --}}
+                {{--
+                    Herramientas de difusión, solo para el emisor del aviso. Si todavía es borrador se
+                    puede publicar; si ya está publicado se puede enviar por correo, abrir WhatsApp o editar.
+                --}}
                 <div class="bg-white shadow-sm rounded-lg p-6">
                     <h3 class="font-semibold text-slate-800 mb-3">Difusión</h3>
 
@@ -76,8 +98,10 @@
                                 @csrf
                                 <x-secondary-button type="submit">Enviar correo (opcional)</x-secondary-button>
                             </form>
-                            {{-- WhatsApp MANUAL: enlace wa.me con texto precargado; el
-                                 envío lo hace el usuario desde su teléfono (§13). --}}
+                            {{--
+                                El envío por WhatsApp es manual: el enlace abre la aplicación con el texto
+                                ya escrito y el usuario decide enviarlo. No usamos ninguna API de WhatsApp.
+                            --}}
                             <a href="{{ $enlaceWhatsApp }}" target="_blank" rel="noopener noreferrer">
                                 <x-secondary-button type="button">Abrir WhatsApp (envío manual)</x-secondary-button>
                             </a>
@@ -89,7 +113,10 @@
                         </p>
                     @endif
 
-                    {{-- Progreso de confirmación (solo informativo; nunca bloquea, §13) --}}
+                    {{--
+                        Seguimiento de lecturas y confirmaciones con una barra de progreso. Es solo
+                        informativo para el emisor; no obliga a nadie a confirmar.
+                    --}}
                     @if ($aviso->publicado && $aviso->requiere_confirmacion)
                         <div class="mt-4 border-t border-slate-200 pt-4">
                             <h4 class="text-sm font-semibold text-slate-700 mb-2">Confirmaciones (opcional)</h4>
@@ -116,7 +143,11 @@
                         </div>
                     @endif
 
-                    {{-- Destinatarios materializados con estado de correo (§13) --}}
+                    {{--
+                        Tabla con todos los destinatarios guardados al publicar: motivo por el que lo
+                        reciben, si lo leyeron, si confirmaron, cómo salió el correo y un enlace de
+                        WhatsApp individual cuando el usuario tiene teléfono registrado.
+                    --}}
                     @if ($aviso->publicado)
                         <div class="mt-4 border-t border-slate-200 pt-4">
                             <h4 class="text-sm font-semibold text-slate-700 mb-2">
@@ -162,7 +193,7 @@
                                                 </td>
                                                 <td class="py-2 text-xs">
                                                     @if ($destino->usuario?->telefono)
-                                                        {{-- Enlace manual por destinatario (§13): la app no envía --}}
+                                                        {{-- Enlace manual para escribirle a este destinatario; el sistema no envía nada por sí mismo --}}
                                                         <a class="text-emerald-700 hover:underline" target="_blank" rel="noopener noreferrer"
                                                            href="https://wa.me/{{ \App\Support\WhatsApp::normalizarTelefono($destino->usuario->telefono) }}?text={{ rawurlencode(\App\Support\WhatsApp::textoAviso($aviso)) }}">
                                                             wa.me/{{ \App\Support\WhatsApp::normalizarTelefono($destino->usuario->telefono) }}

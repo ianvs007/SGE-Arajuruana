@@ -1,3 +1,11 @@
+{{--
+    Reporte imprimible: cuentas pendientes.
+    Lista los cargos (deudas) que todavía no fueron pagados por completo: fecha de emisión,
+    concepto, padre, estudiante, monto, estado y fecha de vencimiento.
+    Recibe del controlador $cargos (colección con su padre y estudiante).
+    Lo usa el personal administrativo y de tesorería con acceso a reportes.
+--}}
+{{-- Encabezado común de los reportes imprimibles, con el total de cargos. --}}
 @include('reportes._print_header', ['titulo' => 'Reporte de cuentas pendientes', 'subtitulo' => 'Total: '.$cargos->count()])
 
 <div class="table-wrap">
@@ -14,6 +22,7 @@
         </tr>
     </thead>
     <tbody>
+        {{-- Un cargo por fila; el monto se muestra en bolivianos con dos decimales. --}}
         @forelse ($cargos as $cargo)
             <tr>
                 <td>{{ optional($cargo->fecha_emision)->format('d/m/Y') }}</td>

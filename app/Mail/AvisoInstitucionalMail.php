@@ -11,26 +11,38 @@ use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
 
 /**
- * Correo de aviso institucional (§13).
+ * Correo electrónico de un aviso institucional (comunicado).
  *
- * - Variables EXPLÍCITAS y documentadas (sin secretos ni datos sensibles en el
- *   cuerpo): título, contenido, tipo, alcance, unidad educativa y enlace.
- * - El envío es OPCIONAL y su fallo no bloquea el aviso (lo gestiona
- *   `NotificacionService::enviarCorreos`).
- * - Configuração SMTP por `.env` (`MAIL_*`); nunca credenciales en el código.
- * - Si la confirmación de lectura es requerida, el correo aclara que es OPCIONAL
- *   y que el sistema se puede seguir usando sin confirmar (§13).
+ * Arma el correo que recibe cada destinatario de un aviso publicado por el
+ * colegio. Usa la plantilla Markdown
+ * resources/views/mail/aviso_institucional.blade.php y se envía desde
+ * NotificacionService::enviarCorreos(), que se encarga de que un fallo en el
+ * envío no bloquee el aviso, ya que el correo es opcional.
+ *
+ * Criterios que seguimos:
+ * - La plantilla recibe variables explícitas y documentadas (título,
+ *   contenido, tipo, alcance, nombre del colegio y enlace), sin datos
+ *   sensibles ni secretos en el cuerpo del correo.
+ * - La configuración del servidor de correo (SMTP) se lee del archivo .env
+ *   (variables MAIL_*); nunca se escriben credenciales en el código.
+ * - Si el aviso pide confirmación de lectura, el correo aclara que es
+ *   OPCIONAL y que se puede seguir usando el sistema sin confirmar.
  */
 class AvisoInstitucionalMail extends Mailable
 {
     use Queueable, SerializesModels;
 
+    /**
+     * Recibe el aviso y el usuario destinatario, para poder personalizar el
+     * saludo del correo.
+     */
     public function __construct(
         public Aviso $aviso,
         public User $destinatario,
     ) {
     }
 
+    /** Define el asunto del correo. */
     public function envelope(): Envelope
     {
         return new Envelope(
@@ -38,14 +50,18 @@ class AvisoInstitucionalMail extends Mailable
         );
     }
 
+    /** Define el contenido del correo y las variables que recibe la plantilla. */
     public function content(): Content
     {
         return new Content(
-            // `markdown:` (no `view:`) para que se resuelvan los componentes
-            // x-mail::* del tema por defecto del framework.
+            // Usamos `markdown:` en lugar de `view:` para poder aprovechar los
+            // componentes x-mail::* del tema de correos que trae Laravel.
             markdown: 'mail.aviso_institucional',
             with: [
-                // Variables documentadas del correo (§13):
+                // Variables que recibe la plantilla. El tipo y el alcance se
+                // pasan ya traducidos a texto legible, y el enlace se arma con
+                // la URL configurada de la aplicación para que funcione fuera
+                // del navegador del usuario.
                 'aviso' => $this->aviso,
                 'destinatario' => $this->destinatario,
                 'titulo' => $this->aviso->titulo,
@@ -61,6 +77,10 @@ class AvisoInstitucionalMail extends Mailable
         );
     }
 
+    /**
+     * Arma el asunto: la sigla del colegio entre corchetes seguida del
+     * título del aviso, por ejemplo "[UE Arajuruana] Reunión de padres".
+     */
     private function asunto(): string
     {
         return '['.config('institucion.sigla', 'UE Arajuruana').'] '.$this->aviso->titulo;

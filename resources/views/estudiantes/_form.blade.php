@@ -1,4 +1,14 @@
+{{--
+    Vista parcial: Formulario de estudiante
+    Reúne los datos personales y académicos de un estudiante. Se incluye en
+    estudiantes/create y en estudiantes/edit para no repetir los campos.
+
+    Variables que recibe: $estudiante (opcional, solo al editar) y $cursos
+    (lista de cursos para asignar).
+--}}
+{{-- Si estamos creando, no hay estudiante; lo dejamos en null para que los campos salgan vacíos --}}
 @php($estudiante = $estudiante ?? null)
+{{-- Datos de identificación y datos personales, distribuidos en dos columnas --}}
 <div class="grid md:grid-cols-2 gap-4">
     <div>
         <x-input-label for="codigo" value="Código" />
@@ -30,6 +40,7 @@
             @endforeach
         </select>
     </div>
+    {{-- Curso asignado; puede quedar sin curso si todavía no se inscribió --}}
     <div>
         <x-input-label for="curso_id" value="Curso" />
         <select id="curso_id" name="curso_id" class="border-gray-300 rounded-md shadow-sm mt-1 w-full">
@@ -39,6 +50,7 @@
             @endforeach
         </select>
     </div>
+    {{-- Estado del estudiante; por defecto un estudiante nuevo queda activo --}}
     <div>
         <x-input-label for="estado" value="Estado" />
         <select id="estado" name="estado" class="border-gray-300 rounded-md shadow-sm mt-1 w-full" required>
@@ -48,6 +60,7 @@
         </select>
     </div>
 </div>
+{{-- Observaciones generales sobre el estudiante --}}
 <div class="mt-4">
     <x-input-label for="observaciones" value="Observaciones" />
     <textarea id="observaciones" name="observaciones" class="border-gray-300 rounded-md shadow-sm mt-1 w-full" rows="3">{{ old('observaciones', $estudiante?->observaciones) }}</textarea>

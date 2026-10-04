@@ -1,9 +1,23 @@
+{{--
+    Componente: x-modal
+    Ventana modal reutilizable (viene de Laravel Breeze) que funciona con Alpine.js.
+    Se usa en las pantallas donde hace falta pedir una confirmación o mostrar un
+    formulario emergente, por ejemplo al eliminar la cuenta en el perfil.
+
+    Props que recibe:
+    - name: identificador del modal; se abre o cierra disparando los eventos
+      "open-modal" y "close-modal" con este nombre.
+    - show: si es true, el modal aparece abierto desde que carga la página.
+    - maxWidth: ancho máximo (sm, md, lg, xl o 2xl).
+    También acepta el atributo "focusable" para enfocar el primer campo al abrirse.
+--}}
 @props([
     'name',
     'show' => false,
     'maxWidth' => '2xl'
 ])
 
+{{-- Traducimos el tamaño elegido a la clase de Tailwind correspondiente --}}
 @php
 $maxWidth = [
     'sm' => 'sm:max-w-sm',
@@ -14,6 +28,12 @@ $maxWidth = [
 ][$maxWidth];
 @endphp
 
+{{--
+    Contenedor principal del modal. En x-data se guarda el estado (abierto o cerrado)
+    y unas funciones para mantener el foco del teclado dentro de la ventana mientras
+    está abierta. Escucha los eventos globales para abrirse o cerrarse, se cierra con
+    la tecla Escape y bloquea el desplazamiento de la página de fondo.
+--}}
 <div
     x-data="{
         show: @js($show),
@@ -49,6 +69,7 @@ $maxWidth = [
     class="fixed inset-0 overflow-y-auto px-4 py-6 sm:px-0 z-50"
     style="display: {{ $show ? 'block' : 'none' }};"
 >
+    {{-- Fondo gris semitransparente; al hacer clic sobre él se cierra el modal --}}
     <div
         x-show="show"
         class="fixed inset-0 transform transition-all"
@@ -63,6 +84,7 @@ $maxWidth = [
         <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
     </div>
 
+    {{-- Caja blanca del modal; aquí se inserta el contenido que se pasa en el slot --}}
     <div
         x-show="show"
         class="mb-6 bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:w-full {{ $maxWidth }} sm:mx-auto"

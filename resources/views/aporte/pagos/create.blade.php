@@ -1,3 +1,14 @@
+{{--
+    Vista: Registrar pago en ventanilla
+    La usa Administración cuando un responsable familiar paga en persona en la
+    unidad educativa, sin haber informado antes un aviso. Se elige al responsable,
+    se escribe el monto recibido y se reparte entre las cuotas de sus hijos.
+    Al guardar se emite el comprobante interno.
+
+    Variables que recibe del controlador:
+    - $responsables: usuarios con rol de responsable familiar.
+    - $cuotasPorAlumno: cuotas con saldo de la gestión actual, agrupadas por estudiante.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
@@ -10,6 +21,7 @@
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-4">
             @include('partials.flash')
 
+            {{-- Instrucciones para el operador sobre cómo se debe distribuir el monto --}}
             <div class="bg-sky-50 border border-sky-200 text-sky-900 px-4 py-3 rounded text-sm">
                 Registro directo del dinero recibido en ventanilla (sin aviso previo). La distribución entre
                 cuotas de los hijos y meses la decide Administración; la <strong>suma distribuida debe ser
@@ -20,6 +32,7 @@
                 <form method="POST" action="{{ route('aporte.pagos.store') }}" id="form-ventanilla" class="space-y-5">
                     @csrf
 
+                    {{-- Datos principales: quién paga y cuánto dinero se recibió --}}
                     <div class="grid sm:grid-cols-2 gap-4">
                         <div>
                             <x-input-label for="padre_id" value="Responsable familiar que paga" />
@@ -42,12 +55,19 @@
                         </div>
                     </div>
 
+                    {{-- Si no existen cuotas con saldo no hay a qué aplicar el pago, así que se pide generarlas primero --}}
                     @if ($cuotasPorAlumno->isEmpty())
                         <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded p-3 text-sm">
                             No hay cuotas con saldo en la gestión actual. Genere las cuotas primero desde
                             <a class="underline" href="{{ route('aporte.cuotas.index') }}">Cuotas</a>.
                         </div>
                     @else
+                        {{--
+                            Grupos de cuotas por estudiante. En data-responsables guardamos los ids de los
+                            responsables de cada alumno, para que el script muestre solo los hijos del
+                            responsable seleccionado. Los campos inician deshabilitados y se activan al
+                            marcar la casilla de la cuota.
+                        --}}
                         <div id="grupos-cuotas" class="space-y-5">
                             @foreach ($cuotasPorAlumno as $alumnoId => $cuotasAlumno)
                                 @php($alumno = $cuotasAlumno->first()->estudiante)
@@ -86,6 +106,7 @@
                             @endforeach
                         </div>
 
+                        {{-- Suma distribuida, mensajes de ayuda y botón que se habilita solo si todo cuadra --}}
                         <div class="border-t border-slate-200 pt-4">
                             <div class="flex justify-between text-sm mb-1">
                                 <span class="text-slate-600">Suma distribuida</span>
@@ -106,6 +127,12 @@
         </div>
     </div>
 
+    {{--
+        Script del formulario de ventanilla. Al elegir un responsable muestra solo las
+        cuotas de sus hijos, habilita los montos de las cuotas marcadas y compara la suma
+        con el monto recibido. Mientras no coincidan exactamente, el botón queda
+        deshabilitado. El servidor vuelve a comprobar todo al guardar.
+    --}}
     @if ($cuotasPorAlumno->isNotEmpty())
         <script>
             // Ventanilla: filtra alumnos por el responsable elegido, habilita las

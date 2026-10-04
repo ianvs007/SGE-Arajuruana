@@ -1,3 +1,20 @@
+{{--
+    Vista parcial: Formulario de citación
+    Agrupa los campos de una citación y se incluye tanto en citaciones/create
+    como en citaciones/edit, para no repetir el mismo formulario dos veces.
+
+    Variables que recibe:
+    - $citacion: la citación a editar (null al crear).
+    - $estudiantes: estudiantes con sus responsables cargados.
+    - $incidencias: incidencias que se pueden asociar (opcional).
+    - $usuarios: personal que puede encargarse del seguimiento.
+    - $estados: estados posibles de la citación.
+--}}
+{{--
+    Preparamos los datos: dejamos valores por defecto para las variables opcionales y
+    armamos un mapa "estudiante => responsables" que luego usa el script de abajo para
+    llenar el selector de responsables según el estudiante elegido.
+--}}
 @php
     $citacion = $citacion ?? null;
     $incidencias = $incidencias ?? collect();
@@ -13,6 +30,7 @@
     });
 @endphp
 
+{{-- Estudiante al que se refiere la citación --}}
 <div>
     <x-input-label for="estudiante_id" value="Estudiante" />
     <select id="estudiante_id" name="estudiante_id" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 w-full" required>
@@ -26,6 +44,11 @@
     <x-input-error :messages="$errors->get('estudiante_id')" class="mt-2" />
 </div>
 
+{{--
+    Responsable convocado. Empieza vacío y se llena con JavaScript según el estudiante.
+    En data-selected guardamos el valor anterior para volver a marcarlo al editar o si
+    la validación falla.
+--}}
 <div>
     <x-input-label for="padre_id" value="Responsable familiar convocado" />
     <select id="padre_id" name="padre_id" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 w-full" required
@@ -36,6 +59,7 @@
     <p class="mt-1 text-xs text-slate-500">El responsable se ajusta a la fecha y hora asignadas; no hay reserva de citas (§12).</p>
 </div>
 
+{{-- Fecha y hora de la citación; si es nueva, se proponen la fecha y hora actuales --}}
 <div class="grid md:grid-cols-2 gap-4">
     <div>
         <x-input-label for="fecha" value="Fecha asignada" />
@@ -55,6 +79,10 @@
     <x-input-error :messages="$errors->get('motivo')" class="mt-2" />
 </div>
 
+{{--
+    Incidencia relacionada (opcional). Si es confidencial se indica en la lista, porque
+    el mensaje al familiar no debe contar el detalle del caso.
+--}}
 <div>
     <x-input-label for="incidencia_id" value="Incidencia asociada (opcional)" />
     <select id="incidencia_id" name="incidencia_id" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 w-full">
@@ -70,12 +98,14 @@
     <p class="mt-1 text-xs text-slate-500">Si la incidencia es confidencial, el texto dirigido al familiar no reproduce su detalle (§11).</p>
 </div>
 
+{{-- Mensaje que leerá el responsable familiar --}}
 <div>
     <x-input-label for="descripcion" value="Texto dirigido al familiar" />
     <textarea id="descripcion" name="descripcion" rows="3" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 block w-full">{{ old('descripcion', $citacion?->descripcion) }}</textarea>
     <x-input-error :messages="$errors->get('descripcion')" class="mt-2" />
 </div>
 
+{{-- Estado de la citación; al crearla, por defecto queda pendiente --}}
 <div>
     <x-input-label for="estado" value="Estado" />
     <select id="estado" name="estado" class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm mt-1 w-full" required>
@@ -86,6 +116,10 @@
     <x-input-error :messages="$errors->get('estado')" class="mt-2" />
 </div>
 
+{{--
+    Sección de acuerdos y seguimiento: lo que se acordó en la reunión, quién se encarga
+    de dar seguimiento y cuándo se debe revisar de nuevo el caso.
+--}}
 <div class="border-t border-slate-100 pt-4">
     <h4 class="font-semibold text-slate-700 text-sm mb-3">Acuerdos y seguimiento (§12)</h4>
 
@@ -120,6 +154,11 @@
     </div>
 </div>
 
+{{--
+    Script que llena el selector de responsables. Recibe el mapa preparado arriba en
+    formato JSON y, cada vez que cambia el estudiante, muestra solo sus responsables
+    con el parentesco. Al cargar la página se ejecuta una vez para el modo edición.
+--}}
 <script>
     (function () {
         const padresPorEstudiante = @json($padresPorEstudiante);

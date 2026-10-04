@@ -1,4 +1,15 @@
+{{--
+    Vista: Respaldos de la base de datos.
+    Desde esta pantalla el administrador genera copias de seguridad de la base de datos y las
+    descarga. Es importante para no perder información ante una falla del equipo o un error.
+    Recibe del controlador:
+      - $respaldos: lista de respaldos generados (fecha, archivo, tamaño, tablas, estado, etc.).
+      - $rutaFisica: carpeta privada del servidor donde se guardan los archivos.
+      - $rutaDocs: ubicación del documento con los pasos para restaurar un respaldo.
+    Solo la usan los usuarios con el permiso respaldos.gestionar.
+--}}
 <x-app-layout>
+    {{-- Encabezado con el botón que genera un respaldo en el momento (formulario POST con CSRF). --}}
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Respaldos de la base de datos</h2>
@@ -13,7 +24,11 @@
         <div class="max-w-6xl mx-auto sm:px-6 lg:px-8 space-y-4">
             @include('partials.flash')
 
-            {{-- §17: reglas de almacenamiento y restauración --}}
+            {{--
+                Aviso sobre cómo se guardan y restauran los respaldos. Los archivos quedan fuera de
+                la carpeta public, así nadie puede descargarlos con un enlace directo. La restauración
+                no se ofrece desde la web porque reemplaza todos los datos; se hace por consola.
+            --}}
             <div class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900">
                 <p class="font-semibold mb-1">Almacenamiento privado</p>
                 <p>
@@ -29,6 +44,7 @@
                 </p>
             </div>
 
+            {{-- Tabla con el historial de respaldos generados. --}}
             <div class="bg-white shadow-sm rounded-lg p-6 overflow-x-auto">
                 <h3 class="font-semibold text-slate-800 mb-3">Respaldos registrados</h3>
                 <table class="min-w-full text-sm">
@@ -52,6 +68,11 @@
                                 <td class="py-2 pr-3 text-right">{{ $respaldo->tamanoLegible() }}</td>
                                 <td class="py-2 pr-3 text-right">{{ $respaldo->tablas }}</td>
                                 <td class="py-2 pr-3 text-xs text-slate-500">{{ $respaldo->motor }} · {{ $respaldo->base_datos }}</td>
+                                {{--
+                                    Estado del respaldo: verde si se generó bien y rojo si falló (la directiva
+                                    @class elige las clases según la condición). Si hubo error se muestra un
+                                    resumen y el mensaje completo queda en el atributo title.
+                                --}}
                                 <td class="py-2 pr-3">
                                     <span class="text-xs px-2 py-0.5 rounded
                                         @class([
@@ -63,6 +84,10 @@
                                     @endif
                                 </td>
                                 <td class="py-2 pr-3 text-xs text-slate-500">{{ $respaldo->creador?->name ?? '—' }}</td>
+                                {{--
+                                    Acciones: solo se puede descargar un respaldo que terminó bien. La marca de
+                                    checksum indica que el archivo tiene su huella SHA-256 para comprobar su integridad.
+                                --}}
                                 <td class="py-2 text-right space-x-2 whitespace-nowrap">
                                     @if ($respaldo->estado === 'ok')
                                         <a href="{{ route('respaldos.descargar', $respaldo) }}" class="text-sky-700 text-sm hover:underline">Descargar</a>
@@ -83,6 +108,7 @@
                 </table>
             </div>
 
+            {{-- Recomendación de buenas prácticas para el uso de los respaldos. --}}
             <p class="text-xs text-slate-500">
                 Recomendación operativa: genere un respaldo antes de cada importación masiva, cambio de gestión o
                 actualización del sistema, y guarde una copia fuera del servidor (disco externo o nube institucional).

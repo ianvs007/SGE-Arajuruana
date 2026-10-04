@@ -1,7 +1,18 @@
+{{--
+    Vista: Listado de estudiantes
+    Muestra los estudiantes registrados con su código, curso, estado y padres
+    vinculados. Permite buscarlos y, a quien tiene permiso, crearlos, editarlos
+    o eliminarlos. Los docentes pueden consultar la información sin modificarla.
+
+    Variables que recibe del controlador:
+    - $estudiantes: estudiantes paginados con su curso y padres.
+    - $q: texto de búsqueda actual.
+--}}
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Estudiantes</h2>
+            {{-- Solo quien gestiona estudiantes (dirección o secretaría) puede registrar uno nuevo --}}
             @can('estudiantes.gestionar')
                 <a href="{{ route('estudiantes.create') }}"><x-primary-button type="button">Nuevo estudiante</x-primary-button></a>
             @endcan
@@ -12,11 +23,13 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             @include('partials.flash')
             <div class="bg-white shadow-sm rounded-lg p-6">
+                {{-- Buscador por nombre, código o documento de identidad --}}
                 <form method="GET" class="mb-4 flex flex-col sm:flex-row gap-2">
                     <x-text-input name="q" value="{{ $q }}" class="block w-full" placeholder="Buscar por nombre, código o documento" />
                     <x-primary-button>Buscar</x-primary-button>
                 </form>
 
+                {{-- Tabla de estudiantes; los nombres de los padres se muestran separados por comas --}}
                 <div class="overflow-x-auto">
                     <table class="min-w-full text-sm">
                         <thead>
@@ -37,6 +50,12 @@
                                     <td class="pr-3">{{ $estudiante->curso?->etiqueta() ?? '—' }}</td>
                                     <td class="pr-3">{{ ucfirst($estudiante->estado) }}</td>
                                     <td class="pr-3">{{ $estudiante->padres->pluck('name')->join(', ') ?: '—' }}</td>
+                                    {{--
+                                        Acciones: Ver e Historial están disponibles para todos los que acceden a esta
+                                        pantalla. Editar y Eliminar solo aparecen para quien gestiona estudiantes,
+                                        porque los docentes no deben poder modificar ni borrar registros.
+                                        Eliminar pide confirmación y se envía con el método DELETE.
+                                    --}}
                                     <td class="text-right whitespace-nowrap space-x-3">
                                         <a href="{{ route('estudiantes.show', $estudiante) }}" class="text-sky-700 hover:underline">Ver</a>
                                         <a href="{{ route('historial.show', $estudiante) }}" class="text-sky-700 hover:underline">Historial</a>
@@ -58,6 +77,7 @@
                         </tbody>
                     </table>
                 </div>
+                {{-- Enlaces de paginación --}}
                 <div class="mt-4">{{ $estudiantes->links() }}</div>
             </div>
         </div>
