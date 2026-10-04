@@ -20,9 +20,8 @@ demo: `password` (cámbiela antes de cualquier uso real).
   celular/tableta use el botón hamburguesa (☰).
 - Botón de usuario (arriba a la derecha) → **Perfil** para cambiar su
   contraseña; **Cerrar sesión** al terminar.
-- ¿Olvidó su contraseña? En la pantalla de login pulse «¿Olvidaste tu
-  contraseña?» y recibirá un enlace por correo (requiere `MAIL_*` configurado;
-  en desarrollo los correos quedan en `storage/logs/laravel.log`).
+- ¿Olvidó su contraseña? Pida a Administración que se la restablezca desde
+  **Usuarios → Editar**, escribiendo una contraseña nueva.
 
 ## 2. Qué ve cada rol (§5)
 
