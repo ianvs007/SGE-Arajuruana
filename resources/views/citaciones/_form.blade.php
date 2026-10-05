@@ -56,7 +56,7 @@
         <option value="">Seleccione primero un estudiante</option>
     </select>
     <x-input-error :messages="$errors->get('padre_id')" class="mt-2" />
-    <p class="mt-1 text-xs text-slate-500">El responsable se ajusta a la fecha y hora asignadas; no hay reserva de citas (§12).</p>
+    <p class="mt-1 text-xs text-slate-500">El responsable se ajusta a la fecha y hora asignadas; no hay reserva de citas.</p>
 </div>
 
 {{-- Fecha y hora de la citación; si es nueva, se proponen la fecha y hora actuales --}}
@@ -95,7 +95,7 @@
         @endforeach
     </select>
     <x-input-error :messages="$errors->get('incidencia_id')" class="mt-2" />
-    <p class="mt-1 text-xs text-slate-500">Si la incidencia es confidencial, el texto dirigido al familiar no reproduce su detalle (§11).</p>
+    <p class="mt-1 text-xs text-slate-500">Si la incidencia es confidencial, el texto dirigido al familiar no reproduce su detalle.</p>
 </div>
 
 {{-- Mensaje que leerá el responsable familiar --}}
@@ -121,7 +121,7 @@
     de dar seguimiento y cuándo se debe revisar de nuevo el caso.
 --}}
 <div class="border-t border-slate-100 pt-4">
-    <h4 class="font-semibold text-slate-700 text-sm mb-3">Acuerdos y seguimiento (§12)</h4>
+    <h4 class="font-semibold text-slate-700 text-sm mb-3">Acuerdos y seguimiento</h4>
 
     <div>
         <x-input-label for="acuerdos" value="Acuerdos alcanzados" />

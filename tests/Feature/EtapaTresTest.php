@@ -19,7 +19,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * Etapa 3 (§9–§12) con sus pruebas de aceptación asociadas (§20.5–§20.8).
+ * Etapa 3 (puntos 9–12) con sus pruebas de aceptación asociadas (20.5–20.8).
  */
 class EtapaTresTest extends TestCase
 {
@@ -41,11 +41,11 @@ class EtapaTresTest extends TestCase
         return $this->usuario('administracion@sge.local');
     }
 
-    // ================= §9 ASISTENCIA =================
+    // ================= punto 9 ASISTENCIA =================
 
     public function test_no_se_registra_asistencia_en_jornada_sin_clases(): void
     {
-        // §20.6: un curso sin clases por la tarde no acumula ausencias vespertinas.
+        // 20.6: un curso sin clases por la tarde no acumula ausencias vespertinas.
         $admin = $this->admin();
         $curso = Curso::where('nombre', '1ro de Primaria')->whereHas('gestion', fn ($q) => $q->where('es_actual', true))->firstOrFail();
         $estudiante = Estudiante::where('codigo', 'EST-2026-001')->firstOrFail();
@@ -63,7 +63,7 @@ class EtapaTresTest extends TestCase
         ]);
 
         $response->assertSessionHas('error');
-        // No se creó ninguna fila de asistencia: sin clases no hay ausentes (§9).
+        // No se creó ninguna fila de asistencia: sin clases no hay ausentes (punto 9).
         $this->assertDatabaseMissing('asistencias', [
             'estudiante_id' => $estudiante->id,
             'fecha' => $martesTarde,
@@ -126,7 +126,7 @@ class EtapaTresTest extends TestCase
             'Debe existir la fila de asistencia presente.'
         );
 
-        // §9: sin registros duplicados por (alumno, fecha, turno): el segundo envío corrige.
+        // punto 9: sin registros duplicados por (alumno, fecha, turno): el segundo envío corrige.
         $this->actingAs($admin)->post(route('asistencias.store'), [
             'fecha' => $lunes,
             'curso_id' => $curso->id,
@@ -137,7 +137,7 @@ class EtapaTresTest extends TestCase
         $this->assertSame(1, Asistencia::where('estudiante_id', $estudiante->id)
             ->whereDate('fecha', $lunes)->where('turno', 'manana')->count());
 
-        // Corrección con trazabilidad (§9).
+        // Corrección con trazabilidad (punto 9).
         $registro = Asistencia::where('estudiante_id', $estudiante->id)->whereDate('fecha', $lunes)->first();
         $this->assertSame('atrasado', $registro->estado);
         $this->assertSame($admin->id, $registro->modificado_por);
@@ -146,7 +146,7 @@ class EtapaTresTest extends TestCase
 
     public function test_cambiar_horario_futuro_no_reinterpreta_asistencias_pasadas(): void
     {
-        // §20.5: modificar el calendario futuro no cambia el significado del pasado.
+        // 20.5: modificar el calendario futuro no cambia el significado del pasado.
         $admin = $this->admin();
         $gestion = Gestion::actual();
         $curso = Curso::where('nombre', '1ro de Primaria')->where('gestion_id', $gestion->id)->firstOrFail();
@@ -209,7 +209,7 @@ class EtapaTresTest extends TestCase
             ->assertSee('Días con clases (denominador)')
             ->assertSee('Sin registro (≠ ausente)');
 
-        // §9: el total sin registro = días hábiles × alumnos − filas registradas.
+        // punto 9: el total sin registro = días hábiles × alumnos − filas registradas.
         $filas = \App\Services\EstadisticaAsistencia::porCurso($curso, 'manana', $desde, $hasta);
         $totales = \App\Services\EstadisticaAsistencia::totalesCurso($curso, 'manana', $desde, $hasta);
 
@@ -223,7 +223,7 @@ class EtapaTresTest extends TestCase
     public function test_docente_registra_asistencia_solo_de_sus_cursos(): void
     {
         // Matriz corregida el 30/09/2026: el docente verifica y registra la
-        // asistencia diaria, pero SOLO de sus cursos asignados (§6).
+        // asistencia diaria, pero SOLO de sus cursos asignados (punto 6).
         $docente = $this->usuario('docente@sge.local');
         $gestion = Gestion::actual();
         $cursoAjeno = Curso::where('nombre', '1ro de Primaria')->where('gestion_id', $gestion->id)->firstOrFail();
@@ -231,7 +231,7 @@ class EtapaTresTest extends TestCase
         $estudiante = Estudiante::where('codigo', 'EST-2026-001')->firstOrFail(); // de Primaria (ajeno)
         $lunes = now()->startOfWeek()->addDays(7)->toDateString();
 
-        // Registrar en un curso AJENO → 403 por validación de registro (§6).
+        // Registrar en un curso AJENO → 403 por validación de registro (punto 6).
         $this->actingAs($docente)->post(route('asistencias.store'), [
             'fecha' => $lunes,
             'curso_id' => $cursoAjeno->id,
@@ -242,7 +242,7 @@ class EtapaTresTest extends TestCase
         // La pantalla de registro de SU curso sí abre (asistencia.gestionar).
         $this->actingAs($docente)->get(route('asistencias.create', ['curso_id' => $cursoPropio->id]))->assertOk();
 
-        // §6: reporte de un curso ajeno → 403; de su curso → 200.
+        // punto 6: reporte de un curso ajeno → 403; de su curso → 200.
         $this->actingAs($docente)->get(route('asistencias.reporte', [
             'curso_id' => $cursoAjeno->id, 'turno' => 'manana', 'desde' => $lunes, 'hasta' => $lunes,
         ]))->assertForbidden();
@@ -252,7 +252,7 @@ class EtapaTresTest extends TestCase
         ]))->assertOk()->assertSee('3ro de Secundaria');
     }
 
-    // ================= §10 SALIDAS =================
+    // ================= punto 10 SALIDAS =================
 
     public function test_director_autoriza_y_registra_salida_efectiva_acceso_total(): void
     {
@@ -289,7 +289,7 @@ class EtapaTresTest extends TestCase
     public function test_docente_valida_salidas_solo_de_sus_cursos(): void
     {
         // Matriz 30/09/2026: el Docente valida salidas y llegadas de SUS
-        // estudiantes; un alumno de otro curso → 403 por registro (§6).
+        // estudiantes; un alumno de otro curso → 403 por registro (punto 6).
         $docente = $this->usuario('docente@sge.local'); // solo 3ro de Secundaria
         $dePrimaria = Estudiante::where('codigo', 'EST-2026-001')->firstOrFail();
         $deSecundaria = Estudiante::where('codigo', 'EST-2026-002')->firstOrFail();
@@ -315,7 +315,7 @@ class EtapaTresTest extends TestCase
 
     public function test_no_se_duplica_salida_abierta_del_mismo_alumno(): void
     {
-        // §10: sin salidas abiertas duplicadas sin resolución.
+        // punto 10: sin salidas abiertas duplicadas sin resolución.
         $admin = $this->admin();
         $estudiante = Estudiante::where('codigo', 'EST-2026-003')->firstOrFail();
         $fecha = now()->toDateString();
@@ -353,7 +353,7 @@ class EtapaTresTest extends TestCase
             'responsable_retiro' => 'Responsable Ficticio',
         ]);
 
-        // Retorno anterior a la salida → rechazado (§10).
+        // Retorno anterior a la salida → rechazado (punto 10).
         $this->actingAs($admin)->from(route('salidas.show', $salida))
             ->post(route('salidas.retorno', $salida), ['hora_retorno' => '09:00'])
             ->assertSessionHas('error');
@@ -401,7 +401,7 @@ class EtapaTresTest extends TestCase
         $this->actingAs($padre)->get(route('salidas.create'))->assertForbidden();
     }
 
-    // ================= §11 INCIDENCIAS =================
+    // ================= punto 11 INCIDENCIAS =================
 
     public function test_solo_administracion_gestiona_incidencias(): void
     {
@@ -426,7 +426,7 @@ class EtapaTresTest extends TestCase
         $this->actingAs($admin)->get(route('incidencias.index', ['q' => 'EST-2026-001']))
             ->assertOk()
             ->assertSee($estudiante->nombreCompleto());
-        // Búsqueda sin coincidencias → estado vacío claro (§18).
+        // Búsqueda sin coincidencias → estado vacío claro (punto 18).
         $this->actingAs($admin)->get(route('incidencias.index', ['q' => 'ZZZ-inexistente']))
             ->assertOk()
             ->assertSee('No hay incidencias para los filtros seleccionados.');
@@ -447,7 +447,7 @@ class EtapaTresTest extends TestCase
 
     public function test_incidencia_confidencial_no_aparece_en_historial_de_otros_roles(): void
     {
-        // §20.8: las confidenciales no aparecen en consultas no autorizadas.
+        // 20.8: las confidenciales no aparecen en consultas no autorizadas.
         $padre = $this->usuario('padre@sge.local');
         $estudiante = Estudiante::where('codigo', 'EST-2026-002')->firstOrFail(); // representado por el padre
         $incidenciaConfidencial = Incidencia::where('confidencial', true)->firstOrFail();
@@ -478,13 +478,13 @@ class EtapaTresTest extends TestCase
         $categoria = IncidenciaCategoria::where('nombre', 'Categoría de prueba ficticia')->firstOrFail();
         $this->assertTrue($categoria->activa);
 
-        // Desactivar no borra (§7).
+        // Desactivar no borra (punto 7).
         $this->actingAs($admin)->delete(route('incidencias.categorias.destroy', $categoria))->assertRedirect();
         $this->assertFalse($categoria->fresh()->activa);
         $this->assertDatabaseHas('incidencias_categorias', ['id' => $categoria->id]);
     }
 
-    // ================= §12 CITACIONES =================
+    // ================= punto 12 CITACIONES =================
 
     public function test_docente_cita_alumno_de_su_curso_con_acuerdos_y_seguimiento(): void
     {
@@ -529,7 +529,7 @@ class EtapaTresTest extends TestCase
 
     public function test_destinatario_debe_ser_responsable_del_alumno(): void
     {
-        // §6: validación por registro — no se cita a un usuario sin vínculo.
+        // punto 6: validación por registro — no se cita a un usuario sin vínculo.
         $admin = $this->admin();
         $estudiante = Estudiante::where('codigo', 'EST-2026-001')->firstOrFail();
         $docente = $this->usuario('docente@sge.local'); // NO es responsable del alumno
@@ -576,7 +576,7 @@ class EtapaTresTest extends TestCase
 
     public function test_reporte_de_incidencias_oculta_confidenciales_a_roles_sin_permiso(): void
     {
-        // §20.8: las confidenciales no aparecen en consultas/exportaciones no
+        // 20.8: las confidenciales no aparecen en consultas/exportaciones no
         // autorizadas. Matriz 30/09/2026: Dirección y Administración tienen
         // acceso total (las ven); el Docente que verifica casos NO las ve.
         $docente = $this->usuario('docente@sge.local');
@@ -596,7 +596,7 @@ class EtapaTresTest extends TestCase
 
     public function test_panel_docente_sin_conteos_de_incidencias_y_responsable_sin_datos_ajenos(): void
     {
-        // §16: panel solo con datos útiles y autorizados.
+        // punto 16: panel solo con datos útiles y autorizados.
         $docente = $this->usuario('docente@sge.local');
         $this->actingAs($docente)->get(route('dashboard'))
             ->assertOk()
@@ -608,7 +608,7 @@ class EtapaTresTest extends TestCase
             ->assertOk()
             ->assertDontSee('Incidencias abiertas')
             ->assertDontSee('Estudiantes activos')
-            ->assertSee('Saldo de aporte'); // Etapa 4: deuda de aporte por hijo (§14)
+            ->assertSee('Saldo de aporte'); // Etapa 4: deuda de aporte por hijo (punto 14)
 
         // Administración ve el conteo de incidencias (incluye confidenciales).
         $this->actingAs($this->admin())->get(route('dashboard'))
@@ -616,11 +616,11 @@ class EtapaTresTest extends TestCase
             ->assertSee('Incidencias abiertas');
     }
 
-    // ================= §7 HISTORIAL =================
+    // ================= punto 7 HISTORIAL =================
 
     public function test_historial_muestra_inscripciones_entre_gestiones(): void
     {
-        // §20.4: repetir curso en otra gestión conserva historial (base de Etapa 2).
+        // 20.4: repetir curso en otra gestión conserva historial (base de Etapa 2).
         $admin = $this->admin();
         $estudiante = Estudiante::where('codigo', 'EST-2026-002')->firstOrFail();
 
@@ -633,7 +633,7 @@ class EtapaTresTest extends TestCase
 
     public function test_historial_denegado_para_responsable_ajeno(): void
     {
-        // §20.2 reforzado: un responsable sin vínculo no abre el historial.
+        // 20.2 reforzado: un responsable sin vínculo no abre el historial.
         $otro = Estudiante::create([
             'codigo' => 'EST-2026-888', 'nombres' => 'Sin', 'apellidos' => 'Vínculo', 'estado' => 'activo',
         ]);

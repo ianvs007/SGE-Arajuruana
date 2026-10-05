@@ -14,7 +14,7 @@
 
         <title>{{ config('app.name', 'Sistema de Gestión Educativa') }}</title>
 
-        <!-- Sin recursos CDN: la gestión interna funciona en red local (§18). -->
+        <!-- Sin recursos CDN: la gestión interna funciona en red local. -->
 
         {{-- Estilos y scripts compilados con Vite, los mismos que usa el resto del sistema. --}}
         <!-- Scripts -->

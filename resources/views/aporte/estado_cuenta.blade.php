@@ -39,7 +39,7 @@
                         </select>
                     </div>
                     <div class="text-xs text-slate-500 pb-2">
-                        La obligación es del alumno: cada hijo tiene su propia cuenta (§14).
+                        La obligación es del alumno: cada hijo tiene su propia cuenta.
                     </div>
                 </form>
             </div>
@@ -133,7 +133,7 @@
                     <div class="mt-4 flex flex-wrap gap-2 items-center">
                         <a href="{{ route('aporte.avisos.create') }}"><x-primary-button type="button">Informar un pago</x-primary-button></a>
                         <span class="text-xs text-slate-500">
-                            El aviso con nota escrita NO reduce la deuda hasta que Administración lo valide (§14).
+                            El aviso de pago NO reduce la deuda hasta que Administración lo valide.
                         </span>
                     </div>
                 @endcan

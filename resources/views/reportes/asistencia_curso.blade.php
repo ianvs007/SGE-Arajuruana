@@ -127,8 +127,8 @@
 
                     {{-- Nota aclaratoria: "sin registro" no se cuenta como falta. --}}
                     <p class="text-xs text-slate-500 mt-4">
-                        Días hábiles = denominador explícito del rango (§9). «Sin registro» no equivale a ausencia.
-                        PDF y Excel usan estos mismos datos: totales idénticos (§16).
+                        Días hábiles = denominador explícito del rango. «Sin registro» no equivale a ausencia.
+                        PDF y Excel usan estos mismos datos: totales idénticos.
                     </p>
                 </div>
             @else

@@ -96,7 +96,7 @@
 
     {{-- Nota al pie que explica cómo se calcula el reporte. --}}
     <p class="nota">
-        La obligación del aporte es del ALUMNO (§14): dos responsables del mismo alumno no
+        La obligación del aporte es del ALUMNO: dos responsables del mismo alumno no
         duplican la cuota. Este reporte usa `AporteService::estadoDeCuenta()` — la misma
         fuente que la pantalla de estado de cuenta y el Excel; los totales coinciden al centavo.
     </p>

@@ -6,7 +6,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 /**
- * §5 y §20.1: no existe registro público. Las cuentas las crea Administración.
+ * punto 5 y 20.1: no existe registro público. Las cuentas las crea Administración.
  */
 class RegistrationTest extends TestCase
 {

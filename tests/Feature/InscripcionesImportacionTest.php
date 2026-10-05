@@ -27,7 +27,7 @@ class InscripcionesImportacionTest extends TestCase
         return User::where('email', 'administracion@sge.local')->firstOrFail();
     }
 
-    // ---------- Inscripciones (§7) ----------
+    // ---------- Inscripciones (punto 7) ----------
 
     public function test_inscripcion_unica_por_gestion_y_sincroniza_curso_actual(): void
     {
@@ -57,7 +57,7 @@ class InscripcionesImportacionTest extends TestCase
             'curso_id' => $curso->id,
         ]);
 
-        // curso_id del estudiante sincronizado con la gestión actual (§7).
+        // curso_id del estudiante sincronizado con la gestión actual (punto 7).
         $this->assertSame($curso->id, $estudiante->fresh()->curso_id);
     }
 
@@ -115,7 +115,7 @@ class InscripcionesImportacionTest extends TestCase
         $this->actingAs($docente)->get(route('inscripciones.index'))->assertForbidden();
     }
 
-    // ---------- Importación Excel/CSV (§8) ----------
+    // ---------- Importación Excel/CSV (punto 8) ----------
 
     public function test_plantilla_descargable(): void
     {
@@ -149,7 +149,7 @@ class InscripcionesImportacionTest extends TestCase
             ->assertSee('EST-2026-900')
             ->assertSee('Aceptadas: 2');
 
-        // Todavía no se creó nada (§8: nada se importa sin confirmación).
+        // Todavía no se creó nada (punto 8: nada se importa sin confirmación).
         $this->assertDatabaseMissing('estudiantes', ['codigo' => 'EST-2026-900']);
 
         // Paso 2: confirmación transaccional.
@@ -159,7 +159,7 @@ class InscripcionesImportacionTest extends TestCase
         $this->assertDatabaseHas('estudiantes', ['codigo' => 'EST-2026-900', 'documento' => '0011223']);
         $this->assertDatabaseHas('estudiantes', ['codigo' => 'EST-2026-901']);
 
-        // Documento conservó el cero inicial (texto, §8).
+        // Documento conservó el cero inicial (texto, punto 8).
         $this->assertSame('0011223', Estudiante::where('codigo', 'EST-2026-900')->value('documento'));
 
         // Inscripción automática en el curso de contexto.

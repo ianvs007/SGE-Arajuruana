@@ -124,7 +124,7 @@
                     </div>
                     @if ($citacion->incidencia?->confidencial && ! $verDetalleIncidencia)
                         <p class="text-xs text-slate-500 mt-3">
-                            La citación proviene de un caso reservado: el mensaje compartido no incluye su detalle (§11).
+                            La citación proviene de un caso reservado: el mensaje compartido no incluye su detalle.
                         </p>
                     @endif
                 </div>

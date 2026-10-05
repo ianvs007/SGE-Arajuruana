@@ -48,7 +48,7 @@ return [
         ],
 
         /*
-         * §17: respaldos manuales FUERA de rutas públicas. Sin `url`: ningún
+         * punto 17: respaldos manuales FUERA de rutas públicas. Sin `url`: ningún
          * archivo de este disco es servible por URL; la descarga pasa por el
          * controlador con permiso `respaldos.gestionar`.
          */
@@ -61,7 +61,7 @@ return [
         ],
 
         /*
-         * §17: respaldos manuales FUERA de rutas públicas. Sin `url`: ningún
+         * punto 17: respaldos manuales FUERA de rutas públicas. Sin `url`: ningún
          * archivo de este disco es servible por URL; la descarga pasa por el
          * controlador con permiso `respaldos.gestionar`.
          */

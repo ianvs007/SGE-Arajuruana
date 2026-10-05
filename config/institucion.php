@@ -4,12 +4,12 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Datos institucionales (§2: contexto exclusivamente boliviano)
+    | Datos institucionales (punto 2: contexto exclusivamente boliviano)
     |--------------------------------------------------------------------------
     |
     | Identidad de la unidad educativa usada en correos, comprobantes internos,
     | reportes y textos de WhatsApp. Se puede ajustar por `.env` SIN tocar el
-    | código (§13: sin secretos ni datos en duro dispersos).
+    | código (punto 13: sin secretos ni datos en duro dispersos).
     |
     */
 

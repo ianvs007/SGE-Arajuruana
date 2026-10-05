@@ -24,7 +24,7 @@
                 <h3 class="font-semibold text-slate-800 mb-1">Reportes oficiales (pantalla · PDF · Excel)</h3>
                 <p class="text-xs text-slate-500 mb-4">
                     Los totales de PDF y Excel coinciden al centavo con lo mostrado en pantalla:
-                    las tres salidas usan la misma fuente de datos (§16).
+                    las tres salidas usan la misma fuente de datos.
                 </p>
                 <div class="grid sm:grid-cols-3 gap-3">
                     <a href="{{ route('reportes.asistencia-curso') }}" class="block border border-slate-200 rounded-lg px-4 py-3 hover:bg-slate-50">

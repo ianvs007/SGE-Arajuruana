@@ -92,7 +92,7 @@
         </label>
         <p class="text-xs text-slate-500 mt-1">
             La confirmación es <strong>opcional y no bloqueante</strong>: registra quién confirmó, pero el
-            sistema se sigue usando con normalidad sin confirmar (§13).
+            sistema se sigue usando con normalidad sin confirmar.
         </p>
         <div class="mt-3 max-w-xs">
             <x-input-label for="confirmar_antes" value="Fecha sugerida de confirmación (opcional)" />

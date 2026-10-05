@@ -4,7 +4,7 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Validation Language Lines (§18: errores junto a campos, en español)
+    | Validation Language Lines (punto 18: errores junto a campos, en español)
     |--------------------------------------------------------------------------
     */
 

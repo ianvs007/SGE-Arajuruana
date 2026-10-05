@@ -84,7 +84,7 @@
                     {{-- Nota aclaratoria para que el usuario sepa que confirmar no es obligatorio --}}
                     @if ($avisosPorConfirmar > 0)
                         <p class="text-xs text-slate-500 mt-3">
-                            La confirmación de lectura es opcional: el sistema se usa con normalidad sin confirmar (§13).
+                            La confirmación de lectura es opcional: el sistema se usa con normalidad sin confirmar.
                         </p>
                     @endif
                 </div>
@@ -99,7 +99,7 @@
                 {{-- Panel del responsable familiar: tarjetas con sus indicadores personales --}}
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <div class="bg-white p-5 shadow-sm sm:rounded-lg">
-                        <div class="text-sm text-slate-500">Saldo de aporte (§14)</div>
+                        <div class="text-sm text-slate-500">Saldo de aporte</div>
                         <div class="text-2xl font-semibold">{{ \App\Support\Dinero::formato($stats['saldo_aporte_centavos'] ?? 0) }}</div>
                     </div>
                     <div class="bg-white p-5 shadow-sm sm:rounded-lg">

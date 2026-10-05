@@ -13,7 +13,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
-            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Cuotas de aporte (§14)</h2>
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Cuotas de aporte</h2>
             {{--
                 Acciones de la cabecera: acceso a los parámetros del aporte y, para quien tiene
                 permiso de gestionar cuotas, el botón para generarlas. Se pide confirmación porque

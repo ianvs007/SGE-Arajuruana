@@ -60,7 +60,7 @@
                                     <div class="flex items-center gap-3 flex-wrap">
                                         <x-primary-button>Confirmar lectura (opcional)</x-primary-button>
                                         <span class="text-xs text-slate-500">
-                                            No es obligatorio: el sistema se usa igual sin confirmar (§13).
+                                            No es obligatorio: el sistema se usa igual sin confirmar.
                                             @if ($aviso->confirmar_antes)
                                                 Fecha sugerida: {{ $aviso->confirmar_antes->format('d/m/Y') }}.
                                             @endif
@@ -138,7 +138,7 @@
                                 <div class="bg-indigo-500 h-2 rounded-full" style="width: {{ $progreso['porcentaje_leidos'] }}%"></div>
                             </div>
                             <p class="text-xs text-slate-500 mt-2">
-                                {{ $progreso['porcentaje_leidos'] }}% de lectura. Quien no confirme sigue usando el sistema con normalidad (§13).
+                                {{ $progreso['porcentaje_leidos'] }}% de lectura. Quien no confirme sigue usando el sistema con normalidad.
                             </p>
                         </div>
                     @endif

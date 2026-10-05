@@ -22,7 +22,7 @@
             {{-- Aviso: las categorías salen del reglamento de la institución y desactivarlas no borra los casos ya registrados. --}}
             <div class="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded text-sm">
                 Las categorías se configuran según el reglamento interno de convivencia de la institución.
-                No se inventan infracciones ni artículos en el sistema (§11). Desactivar no borra: las
+                No se inventan infracciones ni artículos en el sistema. Desactivar no borra: las
                 incidencias existentes conservan su categoría.
             </div>
 

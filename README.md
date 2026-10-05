@@ -45,7 +45,7 @@ APP_LOCALE=es
 
 En DBeaver: host `127.0.0.1`, puerto `3306`, base `sge_arajuruana`.
 
-## Roles confirmados (§5) y usuarios demo (contraseña: `password`)
+## Roles confirmados (punto 5) y usuarios demo (contraseña: `password`)
 
 | Rol                    | Correo                      |
 |------------------------|-----------------------------|
@@ -58,10 +58,10 @@ En DBeaver: host `127.0.0.1`, puerto `3306`, base `sge_arajuruana`.
 | Responsable Familiar   | madre@sge.local (madre)     |
 
 Padre y madre tienen **cuentas separadas** vinculadas a los mismos alumnos; la obligación
-de aporte pertenece al **alumno** y no se duplica (§5, §14). No existe registro público:
+de aporte pertenece al **alumno** y no se duplica (puntos 5 y 14). No existe registro público:
 Administración crea las cuentas desde **Usuarios** (`/users`).
 
-## Estructura por gestión (§4)
+## Estructura por gestión (punto 4)
 
 La institución y su calendario son **configurables desde la aplicación**, no están fijos en
 el código:
@@ -70,9 +70,9 @@ el código:
 - **Cursos** (`/cursos`): niveles, grados, paralelos, turnos, horarios, asignación de
   docentes y calendario de jornadas sin clases.
 - **Inscripciones**: separan la identidad del alumno de su matrícula por gestión, de modo
-  que puede repetir curso en otra gestión sin perder historial (§7).
+  que puede repetir curso en otra gestión sin perder historial (punto 7).
 
-## Vida escolar (§9–§12, Etapa 3)
+## Vida escolar (puntos 9–12, Etapa 3)
 
 - **Asistencia** (`/asistencias`): por curso, fecha y turno, con calendario. Los días "sin
   clases" (excepciones del calendario) no generan ausentes y "sin registro" no equivale a
@@ -92,9 +92,9 @@ el código:
   seguimiento y fecha de revisión (el índice marca revisiones vencidas). Si se asocia una
   incidencia confidencial, el detalle solo lo ve Administración.
 - **Historial** (`/historial/{alumno}`): inscripciones por gestión + línea de tiempo,
-  mostrando a cada rol únicamente lo autorizado (§7).
+  mostrando a cada rol únicamente lo autorizado (punto 7).
 
-## Flujo económico (§14)
+## Flujo económico (punto 14)
 
 Reglas confirmadas: Bs 40 mensuales por alumno, de febrero a noviembre, con vencimiento el
 día 10; tres hijos generan Bs 120 mensuales; se aceptan abonos parciales, anticipos y cuotas
@@ -114,7 +114,7 @@ Hay dos formas de pago:
 En ambos casos se emite un **comprobante interno** (sin valor fiscal). Los comprobantes de las
 familias se guardan en el disco privado y solo los ven la familia y el personal autorizado.
 
-## Auditoría (§6)
+## Auditoría (punto 6)
 
 Se conservan acciones sensibles (usuario, fecha, acción y registro afectado) en la tabla
 `auditoria`, sin contraseñas ni contenido confidencial innecesario.

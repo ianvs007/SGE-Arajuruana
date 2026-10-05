@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 /**
- * Etapa 2 — Roles y permisos (§5, §6):
+ * Etapa 2 — Roles y permisos (puntos 5 y 6):
  * - Acceso denegado por defecto.
  * - Administración configura gestiones; otros roles no.
  * - Responsable familiar ve solo lo autorizado.
@@ -96,7 +96,7 @@ class RolesPermisosTest extends TestCase
 
     public function test_usuario_inactivo_no_puede_iniciar_sesion(): void
     {
-        // §6: activación e inactivación de cuentas.
+        // punto 6: activación e inactivación de cuentas.
         User::create([
             'name' => 'Inactivo Demo',
             'email' => 'inactivo@sge.local',
@@ -114,7 +114,7 @@ class RolesPermisosTest extends TestCase
 
     public function test_responsable_no_accede_a_alumno_de_otra_familia(): void
     {
-        // §20.2: alterar identificadores no permite consultar datos ajenos.
+        // 20.2: alterar identificadores no permite consultar datos ajenos.
         $ajeno = \App\Models\Estudiante::create([
             'codigo' => 'EST-AJENO',
             'nombres' => 'Otra',
@@ -129,7 +129,7 @@ class RolesPermisosTest extends TestCase
 
     public function test_docente_no_ve_alumnos_fuera_de_sus_cursos(): void
     {
-        // §20.9: el docente no obtiene acceso a datos privados de otros cursos.
+        // 20.9: el docente no obtiene acceso a datos privados de otros cursos.
         $docente = $this->usuario('docente@sge.local'); // asignado solo a 3ro Secundaria
 
         $dePrimaria = \App\Models\Estudiante::where('codigo', 'EST-2026-001')->firstOrFail();
@@ -145,7 +145,7 @@ class RolesPermisosTest extends TestCase
 
     public function test_padre_y_madre_no_duplican_alumno_vinculado(): void
     {
-        // §20.3: cuentas distintas vinculadas al mismo alumno sin duplicar el vínculo.
+        // 20.3: cuentas distintas vinculadas al mismo alumno sin duplicar el vínculo.
         $padre = $this->usuario('padre@sge.local');
         $madre = $this->usuario('madre@sge.local');
 

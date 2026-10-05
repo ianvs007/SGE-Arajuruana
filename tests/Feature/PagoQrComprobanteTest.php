@@ -17,7 +17,7 @@ use Tests\Concerns\PagaConQr;
 use Tests\TestCase;
 
 /**
- * Pago del aporte por QR con comprobante y verificación bancaria (§14).
+ * Pago del aporte por QR con comprobante y verificación bancaria (punto 14).
  *
  * La familia paga con el QR fijo del colegio, marca los meses y sube su
  * comprobante; el operador verifica el ingreso en la plataforma de su banco

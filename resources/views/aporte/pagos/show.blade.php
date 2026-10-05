@@ -102,7 +102,7 @@
                             @endif
                         </dl>
                         <p class="mt-4 text-xs text-slate-400">
-                            Comprobante interno de la Unidad Educativa — <strong>no válido como factura fiscal</strong> (§15).
+                            Comprobante interno de la Unidad Educativa — <strong>no válido como factura fiscal</strong>.
                         </p>
                     </div>
 

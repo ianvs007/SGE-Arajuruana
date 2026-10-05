@@ -20,7 +20,7 @@ use Tests\Concerns\PagaConQr;
 use Tests\TestCase;
 
 /**
- * Etapa 4 (§14, §15) con sus pruebas de aceptación (§20.10–§20.16):
+ * Etapa 4 (puntos 14 y 15) con sus pruebas de aceptación (20.10–20.16):
  * cuotas por alumno, avisos de pago por QR con comprobante, validación
  * transaccional, distribución, comprobante interno y pago en efectivo.
  */
@@ -51,11 +51,11 @@ class EtapaCuatroTest extends TestCase
         return Estudiante::where('codigo', $codigo)->firstOrFail();
     }
 
-    // ============ §20.10: la obligación es del alumno, no de la familia ============
+    // ============ 20.10: la obligación es del alumno, no de la familia ============
 
     public function test_tres_hijos_generan_tres_cuotas_por_mes(): void
     {
-        // §20.10: 3 hijos × Bs 40 = Bs 120 por mes; la cuota es del alumno.
+        // 20.10: 3 hijos × Bs 40 = Bs 120 por mes; la cuota es del alumno.
         $gestion = Gestion::actual();
         $hijos = [
             $this->estudiante('EST-2026-001'),
@@ -80,7 +80,7 @@ class EtapaCuatroTest extends TestCase
 
     public function test_padre_y_madre_con_cuentas_separadas_no_duplican_la_cuota(): void
     {
-        // §20.3 + §20.10: mismo alumno, dos responsables → UNA sola cuota.
+        // 20.3 + 20.10: mismo alumno, dos responsables → UNA sola cuota.
         $gestion = Gestion::actual();
         $hijo = $this->estudiante('EST-2026-001');
 
@@ -99,7 +99,7 @@ class EtapaCuatroTest extends TestCase
 
     public function test_generacion_de_cuotas_es_idempotente(): void
     {
-        // Regenerar no duplica ni recalcula lo emitido (§14).
+        // Regenerar no duplica ni recalcula lo emitido (punto 14).
         $gestion = Gestion::actual();
         $antes = CuotaAporte::where('gestion_id', $gestion->id)->count();
 
@@ -110,7 +110,7 @@ class EtapaCuatroTest extends TestCase
         $this->assertSame($antes, CuotaAporte::where('gestion_id', $gestion->id)->count());
     }
 
-    // ============ §14: parámetros configurables ============
+    // ============ punto 14: parámetros configurables ============
 
     public function test_administracion_configura_parametros_de_aporte(): void
     {
@@ -132,7 +132,7 @@ class EtapaCuatroTest extends TestCase
         $this->assertSame('50.00', (string) $param->monto_mensual);
         $this->assertSame(15, $param->dia_vencimiento);
 
-        // El cambio NO recalcula cuotas ya emitidas (§14).
+        // El cambio NO recalcula cuotas ya emitidas (punto 14).
         $this->assertSame(
             '40.00',
             (string) CuotaAporte::where('gestion_id', $gestion->id)->where('mes', 3)->first()->monto
@@ -155,11 +155,11 @@ class EtapaCuatroTest extends TestCase
             ])->assertForbidden();
     }
 
-    // ============ §20.11: abonos parciales, anticipos y atrasados ============
+    // ============ 20.11: abonos parciales, anticipos y atrasados ============
 
     public function test_abono_parcial_deja_cuota_en_estado_parcial(): void
     {
-        // §20.11: se aceptan abonos parciales; el saldo se calcula en centavos.
+        // 20.11: se aceptan abonos parciales; el saldo se calcula en centavos.
         $admin = $this->admin();
         $hijo = $this->estudiante('EST-2026-003');
         $cuota = CuotaAporte::where('estudiante_id', $hijo->id)->where('mes', 5)->firstOrFail();
@@ -184,11 +184,11 @@ class EtapaCuatroTest extends TestCase
         $this->assertSame(2500, $cuota->pagadoCentavos());
     }
 
-    // ============ §20.12: distribución entre varios hijos y meses ============
+    // ============ 20.12: distribución entre varios hijos y meses ============
 
     public function test_un_pago_se_distribuye_entre_dos_hijos_y_meses(): void
     {
-        // §20.12: Bs 160 = 40 (hija1·feb) + 40 (hijo2·feb) + 40 (hija1·mar) + 40 (hijo2·mar)
+        // 20.12: Bs 160 = 40 (hija1·feb) + 40 (hijo2·feb) + 40 (hija1·mar) + 40 (hijo2·mar)
         $admin = $this->admin();
         $hija = $this->estudiante('EST-2026-001');
         $hijo = $this->estudiante('EST-2026-002');
@@ -215,7 +215,7 @@ class EtapaCuatroTest extends TestCase
             ['cuota_id' => $c4->id, 'monto' => '40.00'],
         ], $admin, operacionBancaria: 'OP-DIST01');
 
-        // Un único pago (registro único del hecho económico, §14).
+        // Un único pago (registro único del hecho económico, punto 14).
         $this->assertSame(1, Pago::where('aviso_id', $aviso->id)->count());
         $this->assertSame(4, $pago->aplicaciones()->count());
         $this->assertNotNull($pago->comprobante_numero);
@@ -253,7 +253,7 @@ class EtapaCuatroTest extends TestCase
                 ['cuota_id' => $cuota->id, 'monto' => '40.00'],
             ], $admin, operacionBancaria: 'OP-EXCE01');
         } finally {
-            // §20.15: sin registros parciales — nada se creó ni se modificó.
+            // 20.15: sin registros parciales — nada se creó ni se modificó.
             $this->assertNull(Pago::where('aviso_id', $aviso->id)->first());
             $cuota->refresh();
             $this->assertSame(4000, $cuota->saldoCentavos());
@@ -265,7 +265,7 @@ class EtapaCuatroTest extends TestCase
 
     public function test_aplicacion_mayor_al_saldo_de_la_cuota_es_rechazada(): void
     {
-        // §20.15: importe inválido o mayor al saldo → rechazado sin parciales.
+        // 20.15: importe inválido o mayor al saldo → rechazado sin parciales.
         $admin = $this->admin();
         $hijo = $this->estudiante('EST-2026-002');
         $cuota = CuotaAporte::where('estudiante_id', $hijo->id)->where('mes', 9)->firstOrFail();
@@ -294,7 +294,7 @@ class EtapaCuatroTest extends TestCase
 
     public function test_no_se_puede_aplicar_pago_a_alumno_ajeno_al_grupo_familiar(): void
     {
-        // §14: no aplicar pagos a alumnos ajenos al grupo familiar autorizado.
+        // punto 14: no aplicar pagos a alumnos ajenos al grupo familiar autorizado.
         $admin = $this->admin();
 
         $ajeno = Estudiante::create([
@@ -338,11 +338,11 @@ class EtapaCuatroTest extends TestCase
         }
     }
 
-    // ============ §20.13: aviso pendiente no reduce deuda ni genera comprobante ============
+    // ============ 20.13: aviso pendiente no reduce deuda ni genera comprobante ============
 
     public function test_aviso_pendiente_no_reduce_deuda_ni_genera_comprobante(): void
     {
-        // §20.13: el aviso lo crea la familia; la deuda solo cambia al validar.
+        // 20.13: el aviso lo crea la familia; la deuda solo cambia al validar.
         $padre = $this->usuario('padre@sge.local');
         $hijo = $this->estudiante('EST-2026-002');
         $cuota = CuotaAporte::where('estudiante_id', $hijo->id)->where('mes', 10)->firstOrFail();
@@ -393,11 +393,11 @@ class EtapaCuatroTest extends TestCase
         $this->assertSame(0, Pago::where('aviso_id', $aviso->id)->count());
     }
 
-    // ============ §20.14: anti-doble-proceso ============
+    // ============ 20.14: anti-doble-proceso ============
 
     public function test_validar_dos_veces_el_mismo_aviso_no_duplica_el_pago(): void
     {
-        // §20.14: doble clic / concurrencia no duplica pago ni aplicaciones.
+        // 20.14: doble clic / concurrencia no duplica pago ni aplicaciones.
         $admin = $this->admin();
         $hijo = $this->estudiante('EST-2026-003');
         $cuota = CuotaAporte::where('estudiante_id', $hijo->id)->where('mes', 3)->firstOrFail();
@@ -462,11 +462,11 @@ class EtapaCuatroTest extends TestCase
         $this->assertSame(1, Pago::where('aviso_id', $aviso->id)->count());
     }
 
-    // ============ §20.16 + §15: comprobante interno ============
+    // ============ 20.16 + punto 15: comprobante interno ============
 
     public function test_pago_validado_genera_comprobante_interno_sin_valor_fiscal(): void
     {
-        // §15: comprobante interno con identificación única; sin CUF ni factura.
+        // punto 15: comprobante interno con identificación única; sin CUF ni factura.
         $admin = $this->admin();
         $pago = Pago::whereNotNull('comprobante_numero')->where('estado', 'validado')->firstOrFail();
 
@@ -493,7 +493,7 @@ class EtapaCuatroTest extends TestCase
         $this->assertSame(((int) substr($ultimo, -5)) + 1, (int) substr($n1, -5));
     }
 
-    // ============ Anulación trazable (§14) ============
+    // ============ Anulación trazable (punto 14) ============
 
     public function test_anular_pago_revierte_saldos_y_deja_registro_trazable(): void
     {
@@ -545,11 +545,11 @@ class EtapaCuatroTest extends TestCase
             ->assertForbidden();
     }
 
-    // ============ Alcance de datos (§6): familia solo ve lo suyo ============
+    // ============ Alcance de datos (punto 6): familia solo ve lo suyo ============
 
     public function test_responsable_no_ve_estado_de_cuenta_de_alumno_ajeno(): void
     {
-        // §20.2 aplicado al módulo económico: alterar el ID en la URL no basta.
+        // 20.2 aplicado al módulo económico: alterar el ID en la URL no basta.
         $padre = $this->usuario('padre@sge.local');
 
         $ajeno = Estudiante::create([
@@ -628,7 +628,7 @@ class EtapaCuatroTest extends TestCase
             ->assertOk();
     }
 
-    // ============ Exención trazable (§14) ============
+    // ============ Exención trazable (punto 14) ============
 
     public function test_eximir_cuota_es_trazable_y_bloquea_pagos_sobre_ella(): void
     {
@@ -647,7 +647,7 @@ class EtapaCuatroTest extends TestCase
         $cuota->refresh();
         $this->assertSame('exenta', $cuota->estado);
 
-        // Un pago sobre la cuota exenta es rechazado (§14).
+        // Un pago sobre la cuota exenta es rechazado (punto 14).
         $aviso = AvisoPago::create([
             'referencia' => 'AVI-TEST-EXENT1',
             'padre_id' => $this->usuario('padre@sge.local')->id,
@@ -728,7 +728,7 @@ class EtapaCuatroTest extends TestCase
         $this->assertSame('pagada', $cuota->estado);
     }
 
-    // ============ Panel (§16) ============
+    // ============ Panel (punto 16) ============
 
     public function test_panel_del_responsable_muestra_deuda_por_hijo(): void
     {

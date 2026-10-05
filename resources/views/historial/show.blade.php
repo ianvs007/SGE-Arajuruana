@@ -86,7 +86,7 @@
                         incidencias), el controlador ya los filtró y aquí solo avisamos de esa restricción.
                     --}}
                     @unless ($verConfidenciales)
-                        <p class="text-xs text-slate-500">Se muestra únicamente la información autorizada para su rol (§7).</p>
+                        <p class="text-xs text-slate-500">Se muestra únicamente la información autorizada para su rol.</p>
                     @endunless
                 </div>
                 <div class="overflow-x-auto">

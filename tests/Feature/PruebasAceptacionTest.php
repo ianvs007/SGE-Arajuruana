@@ -25,16 +25,16 @@ use Tests\Concerns\PagaConQr;
 use Tests\TestCase;
 
 /**
- * Etapa 6 (§20): pruebas mínimas de aceptación, de extremo a extremo.
+ * Etapa 6 (punto 20): pruebas mínimas de aceptación, de extremo a extremo.
  *
- * Cada método corresponde a un ítem de §20.1–§20.21 del documento de requerimientos y
+ * Cada método corresponde a un ítem de 20.1–20.21 del documento de requerimientos y
  * ejercita el flujo COMPLETO por HTTP (formulario real), no solo el servicio.
  * El mapa completo ítem → prueba está en `docs/PRUEBAS_ACEPTACION.md`.
  *
  * Complemento de las pruebas por etapa (RolesPermisosTest, EtapaTresTest,
  * EtapaCuatroTest, EtapaCincoTest): aquí se recorren los flujos de aceptación
  * tal como los demostraría el tesista, incluyendo accesos denegados, estados
- * vacíos y errores de validación (§20: "no solo recorridos exitosos").
+ * vacíos y errores de validación (punto 20: "no solo recorridos exitosos").
  */
 class PruebasAceptacionTest extends TestCase
 {
@@ -71,7 +71,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.1 — Sin registro público; rutas restringidas exigen sesión y permiso
+    // 20.1 — Sin registro público; rutas restringidas exigen sesión y permiso
     // =====================================================================
 
     public function test_20_1_sin_registro_publico_y_rutas_restringidas_exigen_sesion(): void
@@ -89,7 +89,7 @@ class PruebasAceptacionTest extends TestCase
             $this->get($ruta)->assertRedirect(route('login'));
         }
 
-        // Con sesión pero sin permiso: 403 (autorización en el servidor, §5).
+        // Con sesión pero sin permiso: 403 (autorización en el servidor, punto 5).
         $padre = $this->usuario('padre@sge.local');
         $this->actingAs($padre)->get('/users')->assertForbidden();
         $this->actingAs($padre)->get('/respaldos')->assertForbidden();
@@ -98,7 +98,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.2 — Un familiar no accede a alumnos de otra familia alterando IDs
+    // 20.2 — Un familiar no accede a alumnos de otra familia alterando IDs
     // =====================================================================
 
     public function test_20_2_familiar_no_accede_a_alumno_ajeno_alterando_identificadores(): void
@@ -120,7 +120,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.3 — Padre y madre: cuentas distintas sin duplicar cuotas
+    // 20.3 — Padre y madre: cuentas distintas sin duplicar cuotas
     // =====================================================================
 
     public function test_20_3_padre_y_madre_cuentas_distintas_sin_duplicar_cuotas(): void
@@ -143,7 +143,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.4 — Repetir curso en otra gestión conservando el historial
+    // 20.4 — Repetir curso en otra gestión conservando el historial
     // =====================================================================
 
     public function test_20_4_alumno_repite_curso_en_otra_gestion_conservando_historial(): void
@@ -170,7 +170,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.5 — Cambiar el calendario futuro NO reinterpreta asistencias pasadas
+    // 20.5 — Cambiar el calendario futuro NO reinterpreta asistencias pasadas
     // =====================================================================
 
     public function test_20_5_cambio_de_calendario_futuro_no_altera_asistencias_pasadas(): void
@@ -198,7 +198,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.6 — Sin clases por la tarde no acumula ausentes; sin registro ≠ ausente
+    // 20.6 — Sin clases por la tarde no acumula ausentes; sin registro ≠ ausente
     // =====================================================================
 
     public function test_20_6_curso_sin_clases_tarde_no_acumula_ausentes(): void
@@ -225,7 +225,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.7 — Salidas: autorización y registro efectivo según la matriz
+    // 20.7 — Salidas: autorización y registro efectivo según la matriz
     //         corregida el 30/09/2026 (Director con acceso total; Docente
     //         valida solo salidas de sus cursos asignados).
     // =====================================================================
@@ -252,7 +252,7 @@ class PruebasAceptacionTest extends TestCase
         ])->assertRedirect();
         $this->assertSame('salida_efectiva', $salida->fresh()->estado);
 
-        // El Docente valida salidas y llegadas SOLO de sus cursos (§6):
+        // El Docente valida salidas y llegadas SOLO de sus cursos (punto 6):
         // un alumno de Primaria (curso ajeno) → 403.
         $docente = $this->usuario('docente@sge.local');
         $salidaAjena = SalidaEstudiante::where('estudiante_id', $alumno->id)->latest('id')->firstOrFail();
@@ -261,7 +261,7 @@ class PruebasAceptacionTest extends TestCase
         // Administración también la gestiona (acceso total).
         $this->actingAs($admin)->get(route('salidas.show', $salidaAjena))->assertOk();
 
-        // Retorno anterior a la salida → rechazado (integridad §10).
+        // Retorno anterior a la salida → rechazado (integridad punto 10).
         $this->actingAs($admin)->from(route('salidas.show', $salida))
             ->post(route('salidas.retorno', $salida), [
                 'hora_retorno' => '09:00',
@@ -276,7 +276,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.8 — Incidencias confidenciales fuera de consultas no autorizadas
+    // 20.8 — Incidencias confidenciales fuera de consultas no autorizadas
     // =====================================================================
 
     public function test_20_8_incidencia_confidencial_no_se_filtra_por_ningun_canal(): void
@@ -292,7 +292,7 @@ class PruebasAceptacionTest extends TestCase
         $this->actingAs($this->usuario('padre@sge.local'))
             ->get(route('incidencias.index'))->assertForbidden();
 
-        // El REPORTE de incidencias la excluye para quien no tiene el permiso (§20.8).
+        // El REPORTE de incidencias la excluye para quien no tiene el permiso (20.8).
         $this->actingAs($this->usuario('docente@sge.local'))
             ->get(route('reportes.incidencias'))
             ->assertForbidden();
@@ -315,14 +315,14 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.9 — Docente publica aviso general sin ganar acceso a datos privados
+    // 20.9 — Docente publica aviso general sin ganar acceso a datos privados
     // =====================================================================
 
     public function test_20_9_docente_publica_aviso_general_sin_acceso_a_datos_privados(): void
     {
         $docente = $this->usuario('docente@sge.local');
 
-        // Publica un aviso general para todo el colegio SIN aprobación previa (§5/§13).
+        // Publica un aviso general para todo el colegio SIN aprobación previa (puntos 5 y 13).
         $this->actingAs($docente)->post(route('avisos.store'), [
             'titulo' => 'Kermesse solidaria este sábado',
             'contenido' => 'Toda la comunidad está invitada a la kermesse del sábado (demo).',
@@ -336,12 +336,12 @@ class PruebasAceptacionTest extends TestCase
         // Toda la comunidad queda materializada como destinataria.
         $this->assertGreaterThan(5, $aviso->destinatarios()->count());
 
-        // Pero el aviso general NO le concede datos privados del colegio (§5):
+        // Pero el aviso general NO le concede datos privados del colegio (punto 5):
         $this->actingAs($docente)->get(route('respaldos.index'))->assertForbidden();       // respaldos
         $this->actingAs($docente)->get(route('reportes.aporte-curso'))->assertForbidden(); // económico
         $this->actingAs($docente)->get(route('aporte.cuotas.index'))->assertForbidden();   // cuotas
         // Incidencias (matriz 30/09/2026): el docente las verifica en solo
-        // lectura y SIN casos confidenciales (§11).
+        // lectura y SIN casos confidenciales (punto 11).
         $this->actingAs($docente)->get(route('incidencias.index'))
             ->assertOk()->assertDontSee('Caso confidencial ficticio');
 
@@ -353,7 +353,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.10 — Tres alumnos generan Bs 120/mes; Bs 400 por gestión completa
+    // 20.10 — Tres alumnos generan Bs 120/mes; Bs 400 por gestión completa
     // =====================================================================
 
     public function test_20_10_tres_alumnos_generan_120_mensual_y_400_anual_cada_uno(): void
@@ -379,7 +379,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.11 — Abono de Bs 20 sobre cuota de Bs 40 deja Bs 20 de saldo
+    // 20.11 — Abono de Bs 20 sobre cuota de Bs 40 deja Bs 20 de saldo
     // =====================================================================
 
     public function test_20_11_abono_parcial_de_20_deja_saldo_20(): void
@@ -390,12 +390,12 @@ class PruebasAceptacionTest extends TestCase
             ->where('estado', 'pendiente')->firstOrFail();
         $padre = $this->usuario('padre@sge.local');
 
-        // Pago en efectivo en secretaría por HTTP (formulario real, §20.11).
+        // Pago en efectivo en secretaría por HTTP (formulario real, 20.11).
         $this->actingAs($admin)->post(route('aporte.pagos.store'), [
             'padre_id' => $padre->id,
             'monto' => '20.00',
             'aplicaciones' => [['cuota_id' => $cuota->id, 'monto' => '20.00']],
-            'observacion' => 'Abono parcial de Bs 20 (aceptación §20.11).',
+            'observacion' => 'Abono parcial de Bs 20 (aceptación 20.11).',
             'efectivo_recibido' => '1',
         ])->assertRedirect()->assertSessionHasNoErrors();
 
@@ -406,7 +406,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.12 — Bs 80 aplicables a dos cuotas (de un hijo o de dos)
+    // 20.12 — Bs 80 aplicables a dos cuotas (de un hijo o de dos)
     // =====================================================================
 
     public function test_20_12_bs_80_se_distribuyen_entre_dos_hijos(): void
@@ -418,7 +418,7 @@ class PruebasAceptacionTest extends TestCase
         $cuotaHija = CuotaAporte::where('estudiante_id', $hija->id)->where('mes', 9)->where('estado', 'pendiente')->firstOrFail();
         $cuotaHijo = CuotaAporte::where('estudiante_id', $hijo->id)->where('mes', 9)->where('estado', 'pendiente')->firstOrFail();
 
-        // Distribución decidida por Administración vía formulario real (§20.12).
+        // Distribución decidida por Administración vía formulario real (20.12).
         $this->actingAs($admin)->post(route('aporte.pagos.store'), [
             'padre_id' => $padre->id,
             'monto' => '80.00',
@@ -426,7 +426,7 @@ class PruebasAceptacionTest extends TestCase
                 ['cuota_id' => $cuotaHija->id, 'monto' => '40.00'],
                 ['cuota_id' => $cuotaHijo->id, 'monto' => '40.00'],
             ],
-            'observacion' => 'Bs 80 entre dos hijos, septiembre (aceptación §20.12).',
+            'observacion' => 'Bs 80 entre dos hijos, septiembre (aceptación 20.12).',
             'efectivo_recibido' => '1',
         ])->assertRedirect()->assertSessionHasNoErrors();
 
@@ -438,7 +438,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.13 — Avisos pendientes no reducen deuda ni generan comprobantes
+    // 20.13 — Avisos pendientes no reducen deuda ni generan comprobantes
     // =====================================================================
 
     public function test_20_13_aviso_pendiente_no_reduce_deuda_ni_genera_comprobante(): void
@@ -465,7 +465,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.14 — Doble clic/validación concurrente no duplica el pago
+    // 20.14 — Doble clic/validación concurrente no duplica el pago
     // =====================================================================
 
     public function test_20_14_doble_validacion_http_no_duplica_pago(): void
@@ -495,7 +495,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.15 — Importe inválido o mayor al saldo: rechazado sin rastros
+    // 20.15 — Importe inválido o mayor al saldo: rechazado sin rastros
     // =====================================================================
 
     public function test_20_15_aplicacion_invalida_es_rechazada_sin_registros_parciales(): void
@@ -521,7 +521,7 @@ class PruebasAceptacionTest extends TestCase
             'padre_id' => $madre->id,
             'gestion_id' => $cuota->gestion_id,
             'monto_declarado' => '50.00',
-            'nota' => 'Julio de María Fernanda (aceptación §20.15).',
+            'nota' => 'Julio de María Fernanda (aceptación 20.15).',
             'estado' => 'pendiente',
             'informado_en' => now(),
         ]);
@@ -543,7 +543,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.16 — Pagar con QR no acredita nada por sí solo; abrir WhatsApp no marca entrega
+    // 20.16 — Pagar con QR no acredita nada por sí solo; abrir WhatsApp no marca entrega
     // =====================================================================
 
     public function test_20_16_qr_y_whatsapp_manual_no_acreditan_nada(): void
@@ -566,7 +566,7 @@ class PruebasAceptacionTest extends TestCase
             ->assertDontSee('SIMULACIÓN');
 
         // Abrir el enlace WhatsApp de una citación NO cambia su estado (sigue
-        // pendiente; la entrega NO se marca por abrir el enlace, §13).
+        // pendiente; la entrega NO se marca por abrir el enlace, punto 13).
         $citacion = Citacion::where('estado', 'pendiente')->firstOrFail();
         $estadoAntes = $citacion->estado;
 
@@ -578,7 +578,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.17 — Recuperación de contraseña con destinatario de prueba y fallos
+    // 20.17 — Recuperación de contraseña con destinatario de prueba y fallos
     // =====================================================================
 
     public function test_20_17_recuperacion_de_contrasena_funciona_y_maneja_fallo_de_correo(): void
@@ -586,7 +586,7 @@ class PruebasAceptacionTest extends TestCase
         Notification::fake();
         $padre = $this->usuario('padre@sge.local');
 
-        // Destinatario de prueba autorizado (§13): el enlace se genera.
+        // Destinatario de prueba autorizado (punto 13): el enlace se genera.
         $this->post('/forgot-password', ['email' => $padre->email])->assertSessionHasNoErrors();
         Notification::assertSentTo($padre, \Illuminate\Auth\Notifications\ResetPassword::class);
 
@@ -604,7 +604,7 @@ class PruebasAceptacionTest extends TestCase
             });
 
         // Fallo de transporte: mensaje claro junto al campo, sin excepción cruda
-        // y sin simular envío exitoso (§13).
+        // y sin simular envío exitoso (punto 13).
         Notification::shouldReceive('sendResetLink')->andThrow(new \RuntimeException('SMTP caído'));
         $this->from('/forgot-password')->post('/forgot-password', ['email' => $padre->email])
             ->assertRedirect('/forgot-password')
@@ -612,7 +612,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.18 — Importación detecta errores y duplicados sin sobrescribir
+    // 20.18 — Importación detecta errores y duplicados sin sobrescribir
     // =====================================================================
 
     public function test_20_18_importacion_detecta_duplicados_y_errores_sin_sobrescribir(): void
@@ -645,7 +645,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.19 — Totales idénticos entre pantalla, PDF y Excel
+    // 20.19 — Totales idénticos entre pantalla, PDF y Excel
     // =====================================================================
 
     public function test_20_19_totales_identicos_entre_pantalla_pdf_y_excel(): void
@@ -654,7 +654,7 @@ class PruebasAceptacionTest extends TestCase
         $data = \App\Services\ReporteService::aportePorCurso(Gestion::actual());
 
         // Fuente única: lo que la pantalla muestra proviene del mismo array que
-        // consumen PDF y Excel (ReporteService), por construcción (§16).
+        // consumen PDF y Excel (ReporteService), por construcción (punto 16).
         $pantalla = $this->actingAs($admin)->get(route('reportes.aporte-curso'))->assertOk();
         $totalBs = \App\Services\ReporteService::formatoBs($data['totales']['pagado']);
         $pantalla->assertSee($totalBs);
@@ -667,14 +667,14 @@ class PruebasAceptacionTest extends TestCase
         $this->assertStringContainsString('spreadsheet', (string) $excel->headers->get('Content-Type'));
 
         // El total pagado del reporte coincide con la suma real de cuotas pagadas
-        // (no incluye avisos pendientes, §16).
+        // (no incluye avisos pendientes, punto 16).
         $recaudadoReal = CuotaAporte::where('gestion_id', Gestion::actual()->id)->get()
             ->sum(fn ($c) => $c->pagadoCentavos());
         $this->assertSame($recaudadoReal, $data['totales']['pagado']);
     }
 
     // =====================================================================
-    // §20.20 — Respaldo: reconstruible en entorno separado; fallo controlado
+    // 20.20 — Respaldo: reconstruible en entorno separado; fallo controlado
     // =====================================================================
 
     public function test_20_20_respaldo_verificable_y_fallo_controlado_en_entorno_de_prueba(): void
@@ -684,14 +684,14 @@ class PruebasAceptacionTest extends TestCase
 
         // En el entorno de pruebas (SQLite) el volcado MySQL no aplica: el fallo
         // debe ser CONTROLADO (registro + mensaje claro, sin excepción al usuario).
-        $this->actingAs($admin)->post(route('respaldos.store'), ['notas' => 'Aceptación §20.20'])
+        $this->actingAs($admin)->post(route('respaldos.store'), ['notas' => 'Aceptación 20.20'])
             ->assertRedirect()->assertSessionHas('error');
         $fallido = Respaldo::latest('id')->firstOrFail();
         $this->assertSame('error', $fallido->estado);
         $this->assertNotEmpty($fallido->error);
 
         // Un respaldo correcto (como los que genera MySQL) es descargable y su
-        // integridad se verifica por checksum antes de entregarlo (§17).
+        // integridad se verifica por checksum antes de entregarlo (punto 17).
         $sql = "-- Respaldo de aceptación\nCREATE TABLE alumnos (id INT);\nINSERT INTO alumnos VALUES (1);\n";
         Storage::disk('respaldos')->put('aceptacion.sql', $sql);
         $ok = Respaldo::create([
@@ -718,7 +718,7 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.21 — Interfaz principal responsive (estructura verificable)
+    // 20.21 — Interfaz principal responsive (estructura verificable)
     // =====================================================================
 
     public function test_20_21_interfaz_responsive_estructural_en_pantallas_principales(): void
@@ -734,14 +734,14 @@ class PruebasAceptacionTest extends TestCase
             $this->assertStringContainsString('sm:hidden', $respuesta, "$ruta sin botón de menú móvil");
         }
 
-        // Sin dependencias CDN: los assets salen de @vite (compilación local, §18).
+        // Sin dependencias CDN: los assets salen de @vite (compilación local, punto 18).
         $dashboard = $this->actingAs($admin)->get('/dashboard')->content();
         $this->assertStringNotContainsString('https://cdn.', $dashboard);
         $this->assertStringNotContainsString('unpkg.com', $dashboard);
     }
 
     // =====================================================================
-    // Complementos §20: acceso denegado, estados vacíos y errores de validación
+    // Complementos punto 20: acceso denegado, estados vacíos y errores de validación
     // =====================================================================
 
     public function test_estados_vacios_se_muestran_con_mensajes_claros(): void

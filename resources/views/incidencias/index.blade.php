@@ -30,7 +30,7 @@
             @if ($soloLectura ?? false)
                 <div class="mb-4 text-sm text-slate-700 bg-sky-50 border border-sky-200 rounded p-3">
                     Consulta de casos disciplinarios de los alumnos de sus cursos asignados, en solo lectura.
-                    Los casos confidenciales no se muestran (§11).
+                    Los casos confidenciales no se muestran.
                 </div>
             @endif
             <div class="bg-white shadow-sm rounded-lg p-6">

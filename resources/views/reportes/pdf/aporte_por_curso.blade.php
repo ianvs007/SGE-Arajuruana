@@ -93,7 +93,7 @@
         Emitido = suma de cuotas de la gestión (las exentas no cuentan). Recaudado = pagos
         aplicados y validados. Vencido = saldo de cuotas con fecha de vencimiento anterior
         a la fecha de corte. Saldo = deuda vigente (emitido − recaudado). Montos en centavos
-        enteros (§14); este reporte usa la misma fuente que la pantalla y el Excel.
+        enteros; este reporte usa la misma fuente que la pantalla y el Excel.
     </p>
 </body>
 </html>

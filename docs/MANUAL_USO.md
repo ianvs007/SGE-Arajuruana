@@ -1,4 +1,4 @@
-# Manual de uso por rol y recorrido de demostración (§21)
+# Manual de uso por rol y recorrido de demostración (punto 21)
 
 Sistema de Gestión Educativa — Unidad Educativa Arajuruana Fe y Alegría
 (San Ignacio de Moxos, Beni, Bolivia).
@@ -14,7 +14,7 @@ demo: `password` (cámbiela antes de cualquier uso real).
   `http://127.0.0.1:8000` si usa `php artisan serve` (o la IP del servidor en
   red local, p. ej. `http://192.168.1.10/sge`).
 - Escriba su correo y contraseña. Tras 5 intentos fallidos la cuenta se bloquea
-  temporalmente (límite de intentos, §6).
+  temporalmente (límite de intentos, punto 6).
 - **No existe registro público:** las cuentas las crea Administración.
 - El menú superior muestra **solo los módulos permitidos para su rol**; en
   celular/tableta use el botón hamburguesa (☰).
@@ -23,7 +23,7 @@ demo: `password` (cámbiela antes de cualquier uso real).
 - ¿Olvidó su contraseña? Pida a Administración que se la restablezca desde
   **Usuarios → Editar**, escribiendo una contraseña nueva.
 
-## 2. Qué ve cada rol (§5)
+## 2. Qué ve cada rol (punto 5)
 
 | Módulo | Administración | Director | Coordinadora | Subdirector | Docente | Responsable Familiar |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|
@@ -47,7 +47,7 @@ demo: `password` (cámbiela antes de cualquier uso real).
 | Respaldos | ✅ | — | — | — | — | — |
 
 \* El docente registra asistencia solo de sus cursos asignados; la autorización
-en el servidor valida cada registro (modificar la URL no da acceso, §6).
+en el servidor valida cada registro (modificar la URL no da acceso, punto 6).
 
 ## 3. Tareas frecuentes por rol
 
@@ -57,7 +57,7 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
    *actual*; en *Cursos* definir niveles/paralelos/turnos y en *Aportes config.*
    los parámetros (monto mensual, meses, día de vencimiento — por defecto
    Bs 40, febrero a noviembre, día 10). Cambiar parámetros **no** recalcula
-   cuotas ya generadas ni pagos validados (§14).
+   cuotas ya generadas ni pagos validados (punto 14).
 2. **Matricular**: *Estudiantes* → nuevo (o *Importar* desde Excel con
    plantilla descargable, previsualización y detección de duplicados); luego
    *Inscripciones* para vincular alumno-gestión-curso.
@@ -82,7 +82,7 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
    parciales) → marcar «Recibí y conté el dinero en efectivo» → registrar.
    Imprimir el comprobante interno y entregarlo a la familia.
 7. **Anular pagos**: en el detalle del pago → *Anular* con motivo obligatorio;
-   revierte saldos y queda el registro trazable (nunca se borra, §14). El número
+   revierte saldos y queda el registro trazable (nunca se borra, punto 14). El número
    de operación bancaria del pago anulado queda libre para un registro correcto.
 8. **Registrar asistencia**: *Asistencia* → fecha/curso/turno → estados por
    alumno. Sin clases programadas no se puede registrar (no genera ausentes
@@ -92,7 +92,7 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
    vista) y **retorno** (no puede ser anterior a la salida).
 10. **Incidencias**: registro con categorías configurables; marque
    *confidencial* los casos sensibles: solo Administración los ve (historial,
-   reportes y panel los excluyen para el resto, §11).
+   reportes y panel los excluyen para el resto, punto 11).
 11. **Avisos institucionales**: *Avisos* → crear con audiencia (toda la
    comunidad, un curso, los responsables de un alumno…) → **Publicar**
    (materializa destinatarios) → opcionalmente *Enviar correo* (fallos no
@@ -101,7 +101,7 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
 12. **Respaldos**: menú *Respaldos* → «Generar respaldo ahora» (mensual como
     mínimo + copia externa). Detalle en `docs/RESPALDOS.md`.
 13. **Usuarios**: crear cuentas, asignar roles (el sistema impide asignar roles
-    de rango superior al propio — anti-escalada §5), activar/inactivar.
+    de rango superior al propio — anti-escalada punto 5), activar/inactivar.
 
 ### 3.2 Director / Coordinadora / Subdirector
 
@@ -119,7 +119,7 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
   responsable de seguimiento y fecha de revisión). Si hay incidencia asociada,
   el texto dirigido al familiar respeta la confidencialidad.
 - Publica **avisos**, incluidos generales para todo el colegio **sin aprobación
-  previa** (§5) — esto NO le da acceso a datos económicos, incidencias ni
+  previa** (punto 5) — esto NO le da acceso a datos económicos, incidencias ni
   alumnos de otros cursos.
 - Descarga el **reporte oficial de asistencia** (pantalla/PDF/Excel) de sus
   cursos, con denominador explícito (separa ausencia / sin registro / jornada
@@ -131,7 +131,7 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
   confirmaciones opcionales pendientes.
 - **Estado de cuenta**: cuotas por hijo (emitido/pagado/saldo/vencido). Padre y
   madre tienen cuentas separadas pero ven las MISMAS cuotas: la obligación es
-  del alumno y no se duplica (§5).
+  del alumno y no se duplica (punto 5).
 - **Pagar el aporte**: *Avisos de pago* → «Informar un pago». La pantalla
   muestra las dos formas de pago:
   - **Con QR**: marcar los meses de cada hijo que se pagan (cada mes empieza con
@@ -146,39 +146,39 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
     comprobante interno impreso.
 - **Comunicaciones**: avisos dirigidos a él (por rol, curso o familia),
   citaciones y su detalle. La **confirmación de lectura es opcional**: nunca
-  bloquea el uso del sistema (§13).
+  bloquea el uso del sistema (punto 13).
 - **Salidas e historial**: solo de sus representados; las incidencias
   confidenciales no se muestran.
 
 ## 4. Reglas del sistema que el tesista debe poder explicar
 
-1. «Sin registro» ≠ «ausente»; «sin clases» ≠ «ausente» (§9). Los reportes
+1. «Sin registro» ≠ «ausente»; «sin clases» ≠ «ausente» (punto 9). Los reportes
    muestran el denominador usado.
 2. Autorizar una salida ≠ salida efectiva; quien retira se verifica
-   manualmente (nombre + documento) y queda registrado (§10).
+   manualmente (nombre + documento) y queda registrado (punto 10).
 3. La obligación de aporte es **del alumno**: 3 hijos = 3 cuotas (Bs 120 con
-   parámetros por defecto). Padre y madre con cuentas separadas no la duplican (§14).
+   parámetros por defecto). Padre y madre con cuentas separadas no la duplican (punto 14).
 4. Un **aviso de pago pendiente** no reduce deuda ni genera comprobante; solo
    la validación manual del personal lo hace, y validar dos veces no
-   duplica (§14, §20.13–20.14).
+   duplica (punto 14, 20.13–20.14).
 5. En el pago por QR la familia declara qué meses paga (completos o parciales)
    y el sistema calcula el total; al validar se cancelan exactamente esos meses.
    En efectivo, la distribución la registra el personal. En ambos casos la suma
    aplicada debe ser exactamente el monto recibido (no hay saldo a favor ni
-   excedentes, §14).
+   excedentes, punto 14).
 6. El sistema **no se conecta al banco**: el QR es la imagen fija de la cuenta
    del colegio y la confirmación del pago la hace una persona, entrando a la
    plataforma de su banco. Queda registrado quién verificó, cuándo y con qué
    número de operación, que no puede repetirse en otro pago vigente. El
-   comprobante interno no tiene valor fiscal (§15).
+   comprobante interno no tiene valor fiscal (punto 15).
 7. Abrir el enlace de **WhatsApp no marca entrega** ni confirma lectura: el
-   envío es manual desde el teléfono de quien comparte (§13).
+   envío es manual desde el teléfono de quien comparte (punto 13).
 8. Los **cambios de configuración** (horarios, parámetros de aporte) no
-   reinterpretan datos pasados: la vigencia queda por registro (§4, §14).
+   reinterpretan datos pasados: la vigencia queda por registro (puntos 4 y 14).
 9. Pantalla, PDF y Excel de un reporte muestran **los mismos totales** (misma
-   fuente de datos, §16).
+   fuente de datos, punto 16).
 10. Los **respaldos** se guardan fuera de rutas públicas, con checksum; la
-    restauración es un procedimiento de consola documentado (§17).
+    restauración es un procedimiento de consola documentado (punto 17).
 
 ## 5. Recorrido de demostración para la defensa (~15 minutos)
 
@@ -202,9 +202,9 @@ celular en la misma red (opcional, para mostrar el responsive).
 | 10 | Importación Excel | administracion@sge.local | *Importar* → descargar plantilla → subir un CSV con un duplicado → previsualización con filas aceptadas/rechazadas y motivos → nada se guarda sin confirmar. |
 | 11 | Respaldo y auditoría | administracion@sge.local | *Respaldos* → generar → registro con checksum y ubicación fuera de `public/`. Mencionar `docs/RESPALDOS.md` (restauración probada en base separada). |
 | 12 | Responsive | (celular o F12) | Abrir la misma URL desde el celular en la red local: menú hamburguesa, tablas con scroll, formularios legibles. |
-| 13 | Pruebas de aceptación | (consola) | `php artisan test` → 171 pruebas verdes, incluidas las 21 mínimas de §20 (mapa en `docs/PRUEBAS_ACEPTACION.md`). |
+| 13 | Pruebas de aceptación | (consola) | `php artisan test` → 171 pruebas verdes, incluidas las 21 mínimas del punto 20 (mapa en `docs/PRUEBAS_ACEPTACION.md`). |
 
-Cierre sugerido: recordar los límites del alcance (§2): sin facturación fiscal,
+Cierre sugerido: recordar los límites del alcance (punto 2): sin facturación fiscal,
 sin integración bancaria, sin WhatsApp automático, sin publicación en la nube;
 la arquitectura queda lista para un futuro despliegue si la institución lo
 autoriza.
@@ -231,13 +231,13 @@ Resultados verificados, útiles como guion de defensa:
 | 8 | Aviso general + WhatsApp | El docente publicó un aviso con audiencia «toda la comunidad» → **7 destinatarios** materializados. Enlace generado: `https://wa.me/59170000001?text=…` con mensaje precargado y la aclaración «envío manual» (sin API). |
 | 9 | Mínimo privilegio | La incidencia confidencial «Caso confidencial ficticio» es visible solo para Administración. Director, Docente y Responsable Familiar: `/incidencias` → 403, reporte e historial **sin** el caso confidencial pero **sí** con los no confidenciales, y `/incidencias/2/edit` → 403. |
 | 10 | Importación controlada | CSV de 7 filas → **2 aceptadas, 5 rechazadas** con motivo por fila (código existente, sexo inválido, sin nombres, código duplicado en el archivo, documento duplicado). Estudiantes antes: 3, después: **3** (nada guardado sin confirmar). |
-| 11 | Auditoría y respaldos | `auditoria` registró `pagos.validar` por `administracion@sge.local` en la hora exacta de la validación. Respaldos: raíz `storage/app/private/respaldos/`, **fuera** de `public/`; se verificó que no existe ningún respaldo accesible por URL. Prueba §20.20 en verde (10 aserciones). |
-| 12 | Responsive | Móvil 390×844 y tableta 834×1112: **20/20 páginas** sin desborde horizontal; hamburguesa con los **21 enlaces de módulo** completos (+ Perfil y Cerrar sesión); tablas anchas con scroll interno; PC 1440×900 con `flex-wrap` medido en 2 filas. Segunda pasada (23/09): **134 combinaciones ruta×viewport sin desborde**, cubriendo además formularios create/edit, detalles, auth/guest, los 7 listados simples de `/reportes/*` (corregidos con wrapper de scroll interno + `min-width`) y los anchos efectivos de PC Windows con escalado 125%/150% y zoom (1024–1920 px). **Probado también en dispositivo físico**: Android + Chrome vía WiFi sobre la red local (`http://192.168.65.23:8000`), procedimiento en `docs/INSTALACION.md` §10.1. |
+| 11 | Auditoría y respaldos | `auditoria` registró `pagos.validar` por `administracion@sge.local` en la hora exacta de la validación. Respaldos: raíz `storage/app/private/respaldos/`, **fuera** de `public/`; se verificó que no existe ningún respaldo accesible por URL. Prueba 20.20 en verde (10 aserciones). |
+| 12 | Responsive | Móvil 390×844 y tableta 834×1112: **20/20 páginas** sin desborde horizontal; hamburguesa con los **21 enlaces de módulo** completos (+ Perfil y Cerrar sesión); tablas anchas con scroll interno; PC 1440×900 con `flex-wrap` medido en 2 filas. Segunda pasada (23/09): **134 combinaciones ruta×viewport sin desborde**, cubriendo además formularios create/edit, detalles, auth/guest, los 7 listados simples de `/reportes/*` (corregidos con wrapper de scroll interno + `min-width`) y los anchos efectivos de PC Windows con escalado 125%/150% y zoom (1024–1920 px). **Probado también en dispositivo físico**: Android + Chrome vía WiFi sobre la red local (`http://192.168.65.23:8000`), procedimiento en `docs/INSTALACION.md` 10.1. |
 | 13 | Pruebas | `php artisan test` → **151 passed (678 assertions)** antes y después del recorrido. |
 
 > Nota sobre el paso 11: generar un respaldo desde la web es una operación de
 > escritura que quedó **pendiente de ejecutar** en esta sesión (se requirió
-> aprobación explícita). Está cubierto por la prueba automatizada §20.20
+> aprobación explícita). Está cubierto por la prueba automatizada 20.20
 > (`respaldo verificable y fallo controlado`), que valida el checksum SHA-256,
 > la ubicación privada y el fallo controlado sin tocar la base real. Para
 > mostrarlo en vivo durante la defensa: *Respaldos* → **Generar respaldo ahora**.
@@ -246,5 +246,5 @@ Resultados verificados, útiles como guion de defensa:
 
 - `docs/INSTALACION.md` — instalación local XAMPP paso a paso y solución de problemas.
 - `docs/RESPALDOS.md` — respaldo manual, verificación y restauración (incluso en base separada).
-- `docs/PRUEBAS_ACEPTACION.md` — mapa de las 21 pruebas mínimas (§20) → pruebas automatizadas + checklist responsive.
+- `docs/PRUEBAS_ACEPTACION.md` — mapa de las 21 pruebas mínimas (punto 20) → pruebas automatizadas + checklist responsive.
 - `docs/PROGRESO.md` — bitácora por etapas con evidencias reales de validación.

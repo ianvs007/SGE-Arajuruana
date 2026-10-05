@@ -31,7 +31,7 @@
         table { width: 100%; border-collapse: collapse; font-size: 13px; }
         th, td { border: 1px solid #cbd5e1; padding: 8px; text-align: left; vertical-align: top; }
         th { background: #f1f5f9; }
-        /* Responsive (§20.21): en pantallas estrechas la tabla mantiene un ancho
+        /* Responsive: en pantallas estrechas la tabla mantiene un ancho
            mínimo legible y scrollea dentro de su contenedor (mismo patrón que el
            resto del sistema: overflow-x-auto), en vez de comprimir las columnas. */
         .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }

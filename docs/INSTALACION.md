@@ -1,4 +1,4 @@
-# Guía de instalación local — Sistema de Gestión Educativa (§19)
+# Guía de instalación local — Sistema de Gestión Educativa (punto 19)
 
 Instalación en Windows con **XAMPP** (sin Docker, sin WSL, sin servidores
 adicionales), compatible con el equipo informado: Windows 10, 6 GB de RAM,
@@ -24,7 +24,7 @@ incluidas en el repositorio de entrega):
   exige PHP 8.3: **NO subir**), barryvdh/laravel-dompdf 3.1, simple-qrcode 4.2
   (QR en SVG, no requiere GD).
 - Front: Tailwind CSS 3 + Alpine.js 3 compilados con Vite (sin CDN: la app
-  funciona en red local sin internet, §18).
+  funciona en red local sin internet, punto 18).
 
 ## 1. Instalar XAMPP y arrancar servicios
 
@@ -32,7 +32,7 @@ incluidas en el repositorio de entrega):
 2. Abra el **Panel de control de XAMPP** y pulse **Start** en:
    - **Apache** (obligatorio si usará el método Apache del paso 9; la base de
      datos **no** corre en el MariaDB de XAMPP sino en el servicio `MySQL80`,
-     ver §3).
+     ver punto 3).
    - **MySQL** (opcional: la app usa el servicio `MySQL80` del sistema).
 
 > **Nota sobre MySQL:** este proyecto usa el servidor MySQL 8 instalado como
@@ -106,7 +106,7 @@ ningún repositorio). Revise en `.env`:
 ```ini
 APP_ENV=local
 APP_DEBUG=true            # en local; NO dejar true en un despliegue real
-APP_URL=http://127.0.0.1/sge   # método Apache (ver §9); si usa artisan serve: http://127.0.0.1:8000
+APP_URL=http://127.0.0.1/sge   # método Apache (ver punto 9); si usa artisan serve: http://127.0.0.1:8000
 APP_TIMEZONE=America/La_Paz
 APP_LOCALE=es
 
@@ -120,7 +120,7 @@ DB_PASSWORD=              # la contraseña de MySQL si la hubiera
 MAIL_MAILER=log           # desarrollo: los correos se guardan en storage/logs
 ```
 
-**Correo real (opcional, §13):** cuando la institución proporcione la cuenta
+**Correo real (opcional, punto 13):** cuando la institución proporcione la cuenta
 emisora, cambie `MAIL_MAILER=smtp` y complete `MAIL_HOST`, `MAIL_PORT`,
 `MAIL_USERNAME`, `MAIL_PASSWORD`, `MAIL_FROM_ADDRESS`. Son las únicas variables
 necesarias; **ninguna credencial va en el código**. Pruebe primero con
@@ -139,7 +139,7 @@ php artisan db:seed --force
 
 Resultado esperado: 15 migraciones `DONE` y seeders sin errores.
 
-> `db:seed` carga **datos ficticios bolivianos** (§2): 7 usuarios demo (todos
+> `db:seed` carga **datos ficticios bolivianos** (punto 2): 7 usuarios demo (todos
 > con contraseña `password`), 2 gestiones (2025 histórica, 2026 actual), cursos,
 > alumnos, inscripciones, asistencia, incidencias, citaciones, avisos, cuotas y
 > un flujo económico completo de ejemplo.
@@ -163,7 +163,7 @@ entrega ya incluye `public/build/`, puede omitir este paso.
 ## 9. Arrancar la aplicación
 
 Existen dos métodos. Elija **uno**; si usará Apache, ajuste antes `APP_URL` en
-`.env` (§6) y limpie la caché: `php artisan config:clear`.
+`.env` (punto 6) y limpie la caché: `php artisan config:clear`.
 
 ### 9.A Apache de XAMPP (recomendado, ya configurado en esta máquina)
 
@@ -235,7 +235,7 @@ Contraseña para todas: `password`
 **Detener MySQL:** detenga el servicio `MySQL80` (Apache/MySQL en el panel de
 XAMPP si los usa).
 
-## 10. Acceder desde celular o tableta (misma red local, §19)
+## 10. Acceder desde celular o tableta (misma red local, punto 19)
 
 1. Averigüe la IP local del equipo:
 
@@ -310,7 +310,7 @@ Esta secuencia se ejecutó y funcionó de punta a punta; siga el mismo orden:
 - Pruebe `http://192.168.65.23:8000` sin `https`: no hay certificado, y Chrome
   puede intentar `https` automáticamente.
 
-> **No abra puertos a internet ni cree túneles públicos** (§19): el alcance es
+> **No abra puertos a internet ni cree túneles públicos** (punto 19): el alcance es
 > la red local de la institución.
 
 ## 11. Respaldo y restauración
@@ -349,13 +349,13 @@ Luego, en el navegador como `administracion@sge.local`:
 | Página sin estilos | Assets sin compilar | `npm run build` (paso 8) |
 | `Class "..." not found` | vendor incompleto | `php composer.phar install` |
 | 419 Page Expired | Sesión expirada o caché vieja | `php artisan config:clear` y vuelva a iniciar sesión |
-| El respaldo marca "error" | mysqldump no encontrado y fallback sin permisos | Verifique que `C:\xampp\mysql\bin` exista; vea `docs/RESPALDOS.md` §6 |
+| El respaldo marca "error" | mysqldump no encontrado y fallback sin permisos | Verifique que `C:\xampp\mysql\bin` exista; vea `docs/RESPALDOS.md` punto 6 |
 
 ## 14. Notas para un futuro despliegue en la nube
 
 La arquitectura lo permite (configuración por `.env`, archivos privados bajo
 `storage/app/private`, sin rutas absolutas de Windows en el código), pero **no
-está contratado ni autorizado** (§2). Si se aprueba en el futuro: usar
+está contratado ni autorizado** (punto 2). Si se aprueba en el futuro: usar
 `APP_ENV=production`, `APP_DEBUG=false`, HTTPS obligatorio, credenciales de BD
 y correo en variables de entorno del servidor, y `php artisan config:cache` +
 `route:cache`.

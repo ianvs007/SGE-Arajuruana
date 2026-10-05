@@ -286,7 +286,7 @@ final class RespaldoService
         // unimos. El encabezado desactiva temporalmente las claves foráneas
         // para que, al restaurar, el orden de creación de las tablas no importe.
         $sql = [];
-        $sql[] = '-- Respaldo manual del Sistema de Gestión Educativa (§17)';
+        $sql[] = '-- Respaldo manual del Sistema de Gestión Educativa';
         $sql[] = '-- Base de datos: '.$base;
         $sql[] = '-- Generado: '.now()->format('Y-m-d H:i:s').' ('.config('app.timezone').')';
         $sql[] = '-- Restauración: ver docs/RESPALDOS.md';

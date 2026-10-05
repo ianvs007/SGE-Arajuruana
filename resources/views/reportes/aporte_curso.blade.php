@@ -113,7 +113,7 @@
                 {{-- Nota que explica cómo se calculan los montos del reporte. --}}
                 <p class="text-xs text-slate-500 mt-4">
                     Las cuotas exentas no cuentan. Vencido = saldo con fecha de vencimiento anterior al corte.
-                    Montos en centavos enteros (§14); PDF y Excel usan esta misma fuente (§16).
+                    Montos en centavos enteros; PDF y Excel usan esta misma fuente.
                 </p>
             </div>
         </div>

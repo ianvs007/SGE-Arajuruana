@@ -1,4 +1,4 @@
-# Respaldos y restauración (§17)
+# Respaldos y restauración (punto 17)
 
 Guía operativa del respaldo manual del Sistema de Gestión Educativa
 (Unidad Educativa Arajuruana Fe y Alegría).
@@ -106,7 +106,7 @@ php artisan up                 # quita el modo mantenimiento
 2. Seleccione el archivo `.sql` descargado → **Importar**.
 3. Aplique los Pasos 4 y 5 anteriores (cachés y verificación).
 
-## 5.1 Práctica recomendada: restaurar en una BASE SEPARADA (§17)
+## 5.1 Práctica recomendada: restaurar en una BASE SEPARADA (punto 17)
 
 Antes de tocar la base activa, compruebe que el respaldo reconstruye los datos
 en un entorno limpio. Esto se hace en una **base separada**, sin riesgo:

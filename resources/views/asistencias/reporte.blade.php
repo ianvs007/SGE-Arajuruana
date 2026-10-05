@@ -14,7 +14,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
-            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Reporte de asistencia — denominador explícito (§9)</h2>
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Reporte de asistencia — denominador explícito</h2>
             <a href="{{ route('asistencias.index') }}"><x-secondary-button type="button">Volver</x-secondary-button></a>
         </div>
     </x-slot>

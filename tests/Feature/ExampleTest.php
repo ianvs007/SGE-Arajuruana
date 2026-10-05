@@ -7,7 +7,7 @@ use Tests\TestCase;
 class ExampleTest extends TestCase
 {
     /**
-     * La raíz no expone contenido público: sin sesión redirige al login (§5).
+     * La raíz no expone contenido público: sin sesión redirige al login (punto 5).
      */
     public function test_la_raiz_redirige_al_login_sin_sesion(): void
     {

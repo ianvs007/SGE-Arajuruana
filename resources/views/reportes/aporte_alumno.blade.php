@@ -135,8 +135,8 @@
 
                 {{-- Nota aclaratoria sobre el origen de los datos. --}}
                 <p class="text-xs text-slate-500 mt-4">
-                    La obligación del aporte es del alumno (§14). Filas por `AporteService::estadoDeCuenta()`:
-                    pantalla, PDF y Excel coinciden al centavo (§16).
+                    La obligación del aporte es del alumno. Filas por `AporteService::estadoDeCuenta()`:
+                    pantalla, PDF y Excel coinciden al centavo.
                 </p>
             </div>
         </div>

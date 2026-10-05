@@ -13,7 +13,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
-            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Registrar pago en efectivo (§14)</h2>
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Registrar pago en efectivo</h2>
             <a href="{{ route('aporte.pagos.index') }}"><x-secondary-button type="button">Volver</x-secondary-button></a>
         </div>
     </x-slot>
@@ -148,7 +148,7 @@
         <script>
             // Ventanilla: filtra alumnos por el responsable elegido, habilita las
             // cuotas marcadas y exige suma distribuida == monto recibido (regla
-            // autoritativa también en el servidor, §20.15).
+            // autoritativa también en el servidor).
             document.addEventListener('DOMContentLoaded', function () {
                 const selectPadre = document.getElementById('padre_id');
                 const montoEl = document.getElementById('monto');

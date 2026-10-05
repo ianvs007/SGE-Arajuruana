@@ -94,7 +94,7 @@
 
     {{-- Nota aclaratoria sobre cómo se interpretan los días hábiles y los días sin registro. --}}
     <p class="nota">
-        Días hábiles = denominador explícito del rango según calendario del curso (§9):
+        Días hábiles = denominador explícito del rango según calendario del curso:
         los días sin clases programadas no cuentan. «Sin registro» indica que había clases
         pero no se registró el estado; NO equivale a ausencia.
         Los porcentajes de asistencia se calculan sobre los días hábiles del rango.

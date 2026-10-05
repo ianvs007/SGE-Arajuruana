@@ -20,15 +20,15 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Etapa 5 (§13, §16, §17): comunicaciones, reportes con totales idénticos y respaldo.
+ * Etapa 5 (puntos 13 y 16, punto 17): comunicaciones, reportes con totales idénticos y respaldo.
  *
  * Cubre:
- * - Avisos con destinatarios específicos materializados al publicar (§13).
- * - Confirmación de lectura OPCIONAL y NO BLOQUEANTE (§13).
- * - Correo opcional (array/log) con fallo no bloqueante; sin secretos en código (§13).
- * - WhatsApp manual: enlace wa.me generado, sin API ni envío automático (§13).
- * - Reportes PDF/Excel con totales idénticos a pantalla (§16).
- * - Respaldo manual fuera de public/ con restricción por rol (§17).
+ * - Avisos con destinatarios específicos materializados al publicar (punto 13).
+ * - Confirmación de lectura OPCIONAL y NO BLOQUEANTE (punto 13).
+ * - Correo opcional (array/log) con fallo no bloqueante; sin secretos en código (punto 13).
+ * - WhatsApp manual: enlace wa.me generado, sin API ni envío automático (punto 13).
+ * - Reportes PDF/Excel con totales idénticos a pantalla (punto 16).
+ * - Respaldo manual fuera de public/ con restricción por rol (punto 17).
  */
 class EtapaCincoTest extends TestCase
 {
@@ -60,7 +60,7 @@ class EtapaCincoTest extends TestCase
         return Aviso::where('titulo', $titulo)->firstOrFail();
     }
 
-    /** Responsable familiar sin representados (para pruebas de alcance, §6). */
+    /** Responsable familiar sin representados (para pruebas de alcance, punto 6). */
     private function responsableAjeno(): User
     {
         $user = User::create([
@@ -75,7 +75,7 @@ class EtapaCincoTest extends TestCase
         return $user;
     }
 
-    // ============ §13: destinatarios específicos materializados ============
+    // ============ punto 13: destinatarios específicos materializados ============
 
     public function test_aviso_general_materializa_a_toda_la_comunidad_al_publicar(): void
     {
@@ -153,7 +153,7 @@ class EtapaCincoTest extends TestCase
         // El padre representa a EST-2026-002: lo ve.
         $this->actingAs($padre)->get(route('avisos.show', $dirigido))->assertOk();
 
-        // Un responsable que NO lo representa: denegado (§6).
+        // Un responsable que NO lo representa: denegado (punto 6).
         $ajeno = $this->responsableAjeno();
         $this->actingAs($ajeno)->get(route('avisos.show', $dirigido))->assertForbidden();
     }
@@ -171,7 +171,7 @@ class EtapaCincoTest extends TestCase
         ]);
         NotificacionService::publicar($aviso);
 
-        // Responsable ajeno (sin representados) → 403 (§6, validación por registro).
+        // Responsable ajeno (sin representados) → 403 (punto 6, validación por registro).
         $this->actingAs($this->responsableAjeno())
             ->get(route('avisos.show', $aviso))
             ->assertForbidden();
@@ -182,7 +182,7 @@ class EtapaCincoTest extends TestCase
             ->assertOk();
     }
 
-    // ============ §13: confirmación de lectura OPCIONAL y NO BLOQUEANTE ============
+    // ============ punto 13: confirmación de lectura OPCIONAL y NO BLOQUEANTE ============
 
     public function test_confirmacion_de_lectura_es_opcional_y_no_bloquea(): void
     {
@@ -231,7 +231,7 @@ class EtapaCincoTest extends TestCase
         $this->assertNull($destino->confirmado_en, 'Leer no equivale a confirmar.');
     }
 
-    // ============ §13: correo opcional, fallo no bloqueante ============
+    // ============ punto 13: correo opcional, fallo no bloqueante ============
 
     public function test_envio_de_correo_marca_destinatarios_y_no_bloquea(): void
     {
@@ -262,7 +262,7 @@ class EtapaCincoTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('error');
 
-        // §13: el aviso NO se ve afectado por el fallo de correo.
+        // punto 13: el aviso NO se ve afectado por el fallo de correo.
         $this->assertTrue($aviso->fresh()->publicado);
         $this->assertSame('error', $aviso->destinatarios()->first()->correo_estado);
         // El responsable sigue viendo el aviso en pantalla.
@@ -277,7 +277,7 @@ class EtapaCincoTest extends TestCase
 
         $mailable = new AvisoInstitucionalMail($aviso, $destinatario);
         $mailable->assertHasSubject('['.config('institucion.sigla').'] '.$aviso->titulo);
-        // El cuerpo NO incluye claves de .env ni contraseñas (§13).
+        // El cuerpo NO incluye claves de .env ni contraseñas (punto 13).
         $render = $mailable->render();
         $this->assertStringNotContainsString('MAIL_PASSWORD', $render);
         $this->assertStringNotContainsString('APP_KEY', $render);
@@ -286,7 +286,7 @@ class EtapaCincoTest extends TestCase
         $this->assertStringContainsString(config('institucion.nombre'), $render);
     }
 
-    // ============ §13: WhatsApp manual (wa.me, sin API) ============
+    // ============ punto 13: WhatsApp manual (wa.me, sin API) ============
 
     public function test_normalizacion_de_telefono_boliviano(): void
     {
@@ -323,7 +323,7 @@ class EtapaCincoTest extends TestCase
 
     public function test_texto_de_citacion_omite_detalle_confidencial(): void
     {
-        // §11: la citación de la incidencia confidencial no reproduce su detalle.
+        // punto 11: la citación de la incidencia confidencial no reproduce su detalle.
         $citacionConfidencial = \App\Models\Citacion::whereHas('incidencia', fn ($q) => $q->where('confidencial', true))->first();
 
         if ($citacionConfidencial) {
@@ -334,13 +334,13 @@ class EtapaCincoTest extends TestCase
         }
     }
 
-    // ============ §16: reportes PDF/Excel con totales idénticos a pantalla ============
+    // ============ punto 16: reportes PDF/Excel con totales idénticos a pantalla ============
 
     public function test_reporte_aporte_por_curso_totales_coinciden_con_pantalla(): void
     {
         $gestion = Gestion::actual();
 
-        // Cálculo independiente (el de la pantalla de cuotas, §14).
+        // Cálculo independiente (el de la pantalla de cuotas, punto 14).
         $hoy = now()->toDateString();
         $emitido = 0;
         $pagado = 0;
@@ -435,7 +435,7 @@ class EtapaCincoTest extends TestCase
             'desde' => now()->startOfMonth()->toDateString(), 'hasta' => now()->toDateString(),
         ]))->assertForbidden();
 
-        // Caso positivo (§6/§16): el docente SÍ alcanza el reporte de SUS cursos
+        // Caso positivo (puntos 6 y 16): el docente SÍ alcanza el reporte de SUS cursos
         // (pantalla, PDF y Excel), con alcance por registro en el controlador.
         $suyo = $docente->cursosAsignados()->first();
         $this->assertNotNull($suyo, 'El docente semilla debe tener al menos un curso asignado.');
@@ -457,7 +457,7 @@ class EtapaCincoTest extends TestCase
         // Regresión de permisos: Coordinadora/Subdirector tienen `reportes.ver`
         // (la Coordinadora además `asistencia.ver` desde la matriz 30/09/2026);
         // el middleware `reportes.ver|asistencia.ver` no puede dejarlos fuera
-        // del reporte oficial de asistencia (§16).
+        // del reporte oficial de asistencia (punto 16).
         foreach (['coordinadora@sge.local', 'subdirector@sge.local'] as $correo) {
             $usuario = $this->usuario($correo);
             $curso = Curso::where('gestion_id', Gestion::actual()->id)->firstOrFail();
@@ -487,7 +487,7 @@ class EtapaCincoTest extends TestCase
         $this->actingAs($padre)->get(route('reportes.index'))->assertForbidden();
     }
 
-    // ============ §16: panel por rol ============
+    // ============ punto 16: panel por rol ============
 
     public function test_panel_muestra_avisos_recientes_al_responsable(): void
     {
@@ -502,7 +502,7 @@ class EtapaCincoTest extends TestCase
         $this->actingAs($this->admin())->get(route('dashboard'))->assertOk();
     }
 
-    // ============ §17: respaldo manual fuera de public/, por rol ============
+    // ============ punto 17: respaldo manual fuera de public/, por rol ============
 
     public function test_respaldos_solo_para_acceso_total(): void
     {
@@ -555,7 +555,7 @@ class EtapaCincoTest extends TestCase
         // Descarga permitida para Administración, con checksum válido.
         $this->actingAs($admin)->get(route('respaldos.descargar', $respaldo))->assertOk();
 
-        // Si el archivo se altera, el checksum falla y NO se descarga (§17).
+        // Si el archivo se altera, el checksum falla y NO se descarga (punto 17).
         Storage::disk('respaldos')->put('respaldo-test.sql', $contenido.'-- alterado');
         $this->actingAs($admin)->get(route('respaldos.descargar', $respaldo))
             ->assertRedirect()
@@ -564,7 +564,7 @@ class EtapaCincoTest extends TestCase
 
     public function test_documento_de_restauracion_existe(): void
     {
-        // §17: procedimiento de restauración documentado.
+        // punto 17: procedimiento de restauración documentado.
         $this->assertFileExists(base_path('docs/RESPALDOS.md'));
         $contenido = file_get_contents(base_path('docs/RESPALDOS.md'));
         $this->assertStringContainsString('RESTAURACIÓN', $contenido);

@@ -13,7 +13,7 @@
 --}}
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-slate-800 leading-tight">Parámetros de aporte (§14)</h2>
+        <h2 class="font-semibold text-xl text-slate-800 leading-tight">Parámetros de aporte</h2>
     </x-slot>
 
     <div class="py-8">

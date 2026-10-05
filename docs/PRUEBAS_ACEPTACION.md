@@ -1,25 +1,25 @@
-# Pruebas de aceptación (§20) — mapa y resultados
+# Pruebas de aceptación (punto 20) — mapa y resultados
 
 Este documento relaciona cada una de las **21 pruebas mínimas de aceptación** del
-documento de requerimientos (§20) con la prueba automatizada que la verifica y su resultado.
+documento de requerimientos (punto 20) con la prueba automatizada que la verifica y su resultado.
 
-### Cómo ejecutar las pruebas (runbook §20)
+### Cómo ejecutar las pruebas (runbook punto 20)
 
 Con XAMPP iniciado, en la raíz del proyecto:
 
 ```bat
 set PATH=C:\xampp\php;%PATH%
 php artisan test                                  :: suite completa (171 pruebas)
-php artisan test --filter PruebasAceptacionTest   :: solo las 23 de §20
-php artisan test --filter test_20_12              :: solo el punto §20.12
+php artisan test --filter PruebasAceptacionTest   :: solo las 23 del punto 20
+php artisan test --filter test_20_12              :: solo el punto 20.12
 ```
 
 - Las pruebas corren sobre **SQLite en memoria** (`phpunit.xml`): no tocan ni
   contaminan la base MySQL del colegio.
 - Salida esperada: `Tests: 171 passed (814 assertions)`.
-- Si alguna falla tras un cambio, el nombre indica qué punto de §20 se rompió.
+- Si alguna falla tras un cambio, el nombre indica qué inciso del punto 20 se rompió.
 - Cada prueba automatizada se llama igual que su punto de los requerimientos
-  (`test_20_N_...`), para contrastar §20 punto por punto ante el jurado.
+  (`test_20_N_...`), para contrastar el punto 20 inciso por inciso ante el jurado.
 
 Ejecución real más reciente (04/10/2026, PHP 8.2.12, SQLite en memoria), tras
 incorporar el pago por QR con comprobante, verificación bancaria y pago en efectivo:
@@ -33,11 +33,11 @@ incorporar el pago por QR con comprobante, verificación bancaria y pago en efec
   operación repetida, autovalidación, acceso privado al comprobante, QR SVG).
 
 > Las pruebas automatizadas se complementan con la **revisión de interfaz**
-> (checklist responsive en `docs/PRUEBAS_ACEPTACION.md` §B) tal como pide §20.
+> (checklist responsive en `docs/PRUEBAS_ACEPTACION.md` sección B) tal como pide el punto 20.
 
-## A. Mapa §20 → prueba automatizada
+## A. Mapa del punto 20 → prueba automatizada
 
-| § | Prueba mínima de aceptación | Prueba automatizada | Archivo | Resultado |
+| N.º | Prueba mínima de aceptación | Prueba automatizada | Archivo | Resultado |
 |---|---|---|---|---|
 | 20.1 | Sin registro público; rutas restringidas exigen sesión y permiso | `test_20_1_sin_registro_publico_y_rutas_restringidas_exigen_sesion` + `RolesPermisosTest` (6 pruebas) + `RegistrationTest` (2) | `PruebasAceptacionTest` / `RolesPermisosTest` / `Auth\RegistrationTest` | ✅ |
 | 20.2 | Un familiar no accede a alumnos de otra familia alterando IDs | `test_20_2_familiar_no_accede_a_alumno_ajeno_alterando_identificadores` + `test_responsable_no_accede_a_alumno_de_otra_familia` | `PruebasAceptacionTest` / `RolesPermisosTest` | ✅ |
@@ -58,10 +58,10 @@ incorporar el pago por QR con comprobante, verificación bancaria y pago en efec
 | 20.17 | Recuperación de contraseña con destinatario de prueba y fallos de correo | `test_20_17_recuperacion_de_contrasena_funciona_y_maneja_fallo_de_correo` + `Auth\PasswordResetTest` (4 pruebas) | `PruebasAceptacionTest` / `Auth\PasswordResetTest` | ✅ |
 | 20.18 | Importación detecta errores y duplicados sin sobrescribir | `test_20_18_importacion_detecta_duplicados_y_errores_sin_sobrescribir` + 4 pruebas de `InscripcionesImportacionTest` | `PruebasAceptacionTest` / `InscripcionesImportacionTest` | ✅ |
 | 20.19 | Totales idénticos entre pantalla, PDF y Excel | `test_20_19_totales_identicos_entre_pantalla_pdf_y_excel` + `test_reporte_aporte_por_curso_totales_coinciden_con_pantalla` | `PruebasAceptacionTest` / `EtapaCincoTest` | ✅ |
-| 20.20 | Respaldo reconstruible en entorno separado | `test_20_20_respaldo_verificable_y_fallo_controlado_en_entorno_de_prueba` + `test_respaldo_ok_se_descarga_con_checksum_verificado` + procedimiento de **base separada** en `docs/RESPALDOS.md` §5.1 | `PruebasAceptacionTest` / `EtapaCincoTest` | ✅ |
+| 20.20 | Respaldo reconstruible en entorno separado | `test_20_20_respaldo_verificable_y_fallo_controlado_en_entorno_de_prueba` + `test_respaldo_ok_se_descarga_con_checksum_verificado` + procedimiento de **base separada** en `docs/RESPALDOS.md` 5.1 | `PruebasAceptacionTest` / `EtapaCincoTest` | ✅ |
 | 20.21 | Interfaz principal en celular, tableta y PC | `test_20_21_interfaz_responsive_estructural_en_pantallas_principales` + revisión manual (sección B) | `PruebasAceptacionTest` | ✅ |
 
-**Casos transversales exigidos por §20 ("no solo recorridos exitosos"):**
+**Casos transversales exigidos por el punto 20 ("no solo recorridos exitosos"):**
 
 - Acceso denegado: cubierto en las 21 filas anteriores (403 por rol en cada módulo)
   y en `RolesPermisosTest`.
@@ -69,7 +69,7 @@ incorporar el pago por QR con comprobante, verificación bancaria y pago en efec
 - Errores de validación: `test_errores_de_validacion_junto_al_formulario` y las
   pruebas de importación (errores por fila).
 
-## B. Revisión de interfaz responsive (complemento manual, §20.21)
+## B. Revisión de interfaz responsive (complemento manual, 20.21)
 
 La prueba automatizada verifica la **estructura** (viewport, menú móvil, tablas
 con scroll, sin CDN). La revisión visual se hizo el 23/09/2026 con navegador
@@ -112,7 +112,7 @@ Evidencia concreta del wrapper (tabla más ancha del sistema, Cuotas):
 `overflowX = auto`, `propagaDesbordeAlBody = false`.
 
 **Auditoría ampliada (23/09/2026, segunda pasada — compatibilidad celulares /
-tabletas / PC Windows, §13 y §20.21):** se extendió la cobertura a TODO el
+tabletas / PC Windows, punto 13 y 20.21):** se extendió la cobertura a TODO el
 inventario de rutas GET (antes solo las 20 páginas principales), incluyendo
 vistas nunca medidas:
 
@@ -153,7 +153,7 @@ Total verificado en vivo esta pasada: **134 combinaciones ruta×viewport,
    todos sus módulos.
 3. Traducciones literales (`pagination.previous`, `validation.required`…) →
    creados `lang/es/{auth,pagination,passwords,validation}.php` con atributos
-   en español (§2: interfaz en español).
+   en español (punto 2: interfaz en español).
 4. HTML inválido `<a><button></a>` (~75 ocurrencias en 55 vistas) → nuevos
    componentes `x-primary-link-button` / `x-secondary-link-button` (enlace con
    apariencia de botón). Verificado: ya no hay botones anidados en enlaces.
@@ -190,7 +190,7 @@ Mecanismos implementados (Tailwind, compilación local con Vite):
 - Contenedores `overflow-x-auto` en las 27 vistas con tablas.
 - Wrapper `.table-wrap` (CSS propio, `min-width: 640px`) en los 7 listados
   simples de `reportes/*`, que no usan Tailwind.
-- Sin dependencias CDN (§18: funciona en red local sin internet).
+- Sin dependencias CDN (punto 18: funciona en red local sin internet).
 
 > ⚠️ Tras tocar clases de Tailwind en Blade es obligatorio `npm run build`
 > (los assets compilados de `public/build` no se regeneran solos).
@@ -204,10 +204,10 @@ cd "D:\Software\MiPoyecto\Sistema de Gestion Educativa"
 # Suite completa (171 pruebas)
 php artisan test
 
-# Solo aceptación §20 (23 pruebas)
+# Solo aceptación punto 20 (23 pruebas)
 php artisan test --filter=PruebasAceptacion
 ```
 
 Las pruebas usan SQLite en memoria (`phpunit.xml`) y son independientes de la
 base MySQL de desarrollo. El seeder completo (`DatabaseSeeder`) se ejecuta en
-cada prueba: los datos son ficticios (§2).
+cada prueba: los datos son ficticios (punto 2).

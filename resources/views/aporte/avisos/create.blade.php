@@ -18,7 +18,7 @@
     {{-- Cabecera con el título y el botón para volver al listado de avisos --}}
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
-            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Pagar el aporte mensual (§14)</h2>
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Pagar el aporte mensual</h2>
             <a href="{{ route('aporte.avisos.index') }}"><x-secondary-button type="button">Volver</x-secondary-button></a>
         </div>
     </x-slot>

@@ -13,7 +13,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
-            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Avisos de pago (§14)</h2>
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Avisos de pago</h2>
             {{--
                 Botones de acción según permisos: el responsable puede informar un pago hecho
                 con QR y el personal puede registrar un pago recibido en efectivo en secretaría.

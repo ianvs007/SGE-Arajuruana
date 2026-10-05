@@ -19,7 +19,7 @@
         {{-- El título de la pestaña se toma del nombre de la aplicación configurado en el .env. --}}
         <title>{{ config('app.name', 'Sistema de Gestión Educativa') }}</title>
 
-        <!-- Sin recursos CDN: la gestión interna funciona en red local (§18).
+        <!-- Sin recursos CDN: la gestión interna funciona en red local.
              Las fuentes usan la pila del sistema definida en Tailwind. -->
 
         {{-- Vite incluye el CSS (Tailwind) y el JavaScript (Alpine.js) ya compilados del proyecto. --}}

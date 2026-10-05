@@ -272,7 +272,7 @@ class DatabaseSeeder extends Seeder
             [
                 'tipo' => 'Situación familiar',
                 'confidencial' => true,
-                'descripcion' => 'Caso confidencial ficticio: solo Administración puede ver este detalle (§11).',
+                'descripcion' => 'Caso confidencial ficticio: solo Administración puede ver este detalle.',
                 'estado_seguimiento' => 'abierta',
                 'registrado_por' => User::where('email', 'administracion@sge.local')->first()->id,
             ]
