@@ -260,8 +260,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('pagos/{pago}', [PagoController::class, 'show'])->name('pagos.show');
     });
 
-    // Formulario para pagar un cargo; lo usa principalmente el responsable
-    // familiar para iniciar el pago de sus propias cuentas.
+    // Formulario para registrar el pago de un cargo extraordinario. Las familias
+    // ya no pagan aquí: el controlador las envía a "Informar un pago".
     Route::middleware('permission:pagos.ver')->group(function () {
         Route::get('cuentas/{cuenta}/pagar', [PagoController::class, 'create'])->name('pagos.create');
         Route::post('cuentas/{cuenta}/pagar', [PagoController::class, 'store'])->name('pagos.store');
@@ -286,6 +286,14 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:aporte.parametros')->group(function () {
         Route::get('aporte/parametros', [AporteParametroController::class, 'edit'])->name('aporte.parametros.edit');
         Route::put('aporte/parametros/{gestion}', [AporteParametroController::class, 'update'])->name('aporte.parametros.update');
+        // QR y cuenta bancaria del colegio para el pago del aporte.
+        Route::post('aporte/datos-pago', [AporteParametroController::class, 'actualizarDatosPago'])->name('aporte.datos_pago.update');
+    });
+
+    // Imagen del QR del colegio: la ven las familias al informar un pago y el
+    // personal que lo configura o revisa. Se sirve desde el disco privado.
+    Route::middleware('permission:aporte.avisos.informar|aporte.parametros|aporte.avisos.gestionar')->group(function () {
+        Route::get('aporte/qr-pago', [AporteParametroController::class, 'qr'])->name('aporte.qr_pago');
     });
 
     // Generación de las cuotas mensuales de los alumnos inscritos y exención de
@@ -307,8 +315,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('aporte/estado-cuenta/{estudiante}', [CuotaAporteController::class, 'estadoCuenta'])->whereNumber('estudiante')->name('aporte.estado_cuenta');
     });
 
-    // Avisos de pago: el responsable familiar informa que realizó un pago
-    // mediante una nota escrita (sin adjuntar archivos) y puede anular su aviso
+    // Avisos de pago: el responsable familiar informa que pagó con el QR del
+    // colegio (meses que paga, fecha y comprobante) y puede anular su aviso
     // mientras siga pendiente.
     Route::middleware('permission:aporte.avisos.informar')->group(function () {
         Route::get('aporte/avisos/crear', [AvisoPagoController::class, 'create'])->name('aporte.avisos.create');
@@ -316,8 +324,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('aporte/avisos/{aviso}/anular', [AvisoPagoController::class, 'anular'])->whereNumber('aviso')->name('aporte.avisos.anular');
     });
 
-    // Revisión de avisos de pago: Administración, Director y Coordinadora los
-    // validan (y recién ahí se descuenta la deuda) o los rechazan.
+    // Revisión de avisos de pago: Administración, Director y Coordinadora
+    // verifican el pago en su banco y lo validan (recién ahí se descuenta la
+    // deuda) o lo rechazan.
     Route::middleware('permission:aporte.avisos.gestionar')->group(function () {
         Route::post('aporte/avisos/{aviso}/validar', [AvisoPagoController::class, 'validar'])->whereNumber('aviso')->name('aporte.avisos.validar');
         Route::post('aporte/avisos/{aviso}/rechazar', [AvisoPagoController::class, 'rechazar'])->whereNumber('aviso')->name('aporte.avisos.rechazar');
@@ -328,10 +337,12 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('permission:aporte.avisos.informar|aporte.avisos.gestionar|aporte.cuotas.ver')->group(function () {
         Route::get('aporte/avisos', [AvisoPagoController::class, 'index'])->name('aporte.avisos.index');
         Route::get('aporte/avisos/{aviso}', [AvisoPagoController::class, 'show'])->whereNumber('aviso')->name('aporte.avisos.show');
+        // Comprobante subido por la familia; el controlador valida registro por registro.
+        Route::get('aporte/avisos/{aviso}/comprobante', [AvisoPagoController::class, 'comprobante'])->whereNumber('aviso')->name('aporte.avisos.comprobante');
     });
 
-    // Pagos validados. Primero, el registro directo de un pago hecho en
-    // ventanilla (cuando el padre paga en persona y no hace falta un aviso).
+    // Pagos validados. Primero, el registro de un pago en efectivo hecho en
+    // secretaría (cuando el padre paga en persona y no hace falta un aviso).
     Route::middleware('permission:aporte.avisos.gestionar')->group(function () {
         Route::get('aporte/pagos/registrar', [AportePagoController::class, 'create'])->name('aporte.pagos.create');
         Route::post('aporte/pagos', [AportePagoController::class, 'store'])->name('aporte.pagos.store');

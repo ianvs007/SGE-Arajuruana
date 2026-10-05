@@ -95,16 +95,12 @@
                     @endcanany
 
                     {{--
-                        Flujo económico anterior: cargos extraordinarios y confirmación de pagos por QR o
-                        WhatsApp registrados antes del rediseño del módulo. Se mantiene para consultar ese historial.
+                        Cargos extraordinarios del flujo económico anterior. El antiguo módulo de pagos por
+                        QR y WhatsApp ya no aparece en el menú: el aporte se paga desde "Avisos de pago".
                     --}}
                     @canany(['cuentas.gestionar'])
                         <x-nav-link :href="route('cuentas.index')" :active="request()->routeIs('cuentas.*')">Cargos extras</x-nav-link>
                     @endcanany
-
-                    @can('pagos.confirmar')
-                        <x-nav-link :href="route('pagos.pendientes')" :active="request()->routeIs('pagos.pendientes') || request()->routeIs('pagos.*')">Pagos QR (histórico)</x-nav-link>
-                    @endcan
 
                     @can('reportes.ver')
                         <x-nav-link :href="route('reportes.index')" :active="request()->routeIs('reportes.*')">Reportes</x-nav-link>
@@ -227,10 +223,6 @@
             @canany(['cuentas.gestionar'])
                 <x-responsive-nav-link :href="route('cuentas.index')" :active="request()->routeIs('cuentas.*')">Cargos extras</x-responsive-nav-link>
             @endcanany
-
-            @can('pagos.confirmar')
-                <x-responsive-nav-link :href="route('pagos.pendientes')" :active="request()->routeIs('pagos.pendientes') || request()->routeIs('pagos.*')">Pagos QR (histórico)</x-responsive-nav-link>
-            @endcan
 
             @can('reportes.ver')
                 <x-responsive-nav-link :href="route('reportes.index')" :active="request()->routeIs('reportes.*')">Reportes</x-responsive-nav-link>

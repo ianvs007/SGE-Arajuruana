@@ -94,14 +94,25 @@ el código:
 - **Historial** (`/historial/{alumno}`): inscripciones por gestión + línea de tiempo,
   mostrando a cada rol únicamente lo autorizado (§7).
 
-## Flujo económico (§14) — en rediseño (Etapa 4)
+## Flujo económico (§14)
 
 Reglas confirmadas: Bs 40 mensuales por alumno, de febrero a noviembre, con vencimiento el
 día 10; tres hijos generan Bs 120 mensuales; se aceptan abonos parciales, anticipos y cuotas
-atrasadas; un pago puede distribuirse entre varios hijos y meses, y Administración decide la
-distribución. El responsable familiar informa el pago con una **nota escrita** (sin adjuntar
-imagen); Administración valida manualmente y emite un **comprobante interno** (sin valor
-fiscal). El QR es **solo demostrativo**.
+atrasadas; un pago puede distribuirse entre varios hijos y meses.
+
+Hay dos formas de pago:
+
+- **QR del banco del colegio**: Administración sube el QR fijo y los datos de la cuenta en
+  *Aportes config.* La familia marca los meses que paga (completos o parciales), el sistema
+  calcula el total, paga con su banco y sube el **comprobante** (JPG, PNG o PDF). El operador
+  verifica el ingreso **en la plataforma de su banco** (el sistema no se conecta al banco),
+  marca la verificación, registra el **número de operación** (único entre pagos vigentes) y
+  valida: recién entonces se cancelan esos meses.
+- **Efectivo en secretaría**: el operador confirma que recibió y contó el dinero y registra
+  el pago.
+
+En ambos casos se emite un **comprobante interno** (sin valor fiscal). Los comprobantes de las
+familias se guardan en el disco privado y solo los ven la familia y el personal autorizado.
 
 ## Auditoría (§6)
 

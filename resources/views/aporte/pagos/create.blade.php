@@ -1,9 +1,10 @@
 {{--
-    Vista: Registrar pago en ventanilla
-    La usa Administración cuando un responsable familiar paga en persona en la
-    unidad educativa, sin haber informado antes un aviso. Se elige al responsable,
-    se escribe el monto recibido y se reparte entre las cuotas de sus hijos.
-    Al guardar se emite el comprobante interno.
+    Vista: Registrar pago en efectivo
+    La usa el personal de secretaría cuando un responsable familiar paga en
+    efectivo en la unidad educativa. Se elige al responsable, se escribe el monto
+    recibido y se reparte entre los meses de sus hijos (un mes puede pagarse en
+    parte). El operador debe confirmar que recibió y contó el dinero. Al guardar
+    se emite el comprobante interno, que se imprime y se entrega a la familia.
 
     Variables que recibe del controlador:
     - $responsables: usuarios con rol de responsable familiar.
@@ -12,7 +13,7 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center gap-4">
-            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Registrar pago en ventanilla (§14)</h2>
+            <h2 class="font-semibold text-xl text-slate-800 leading-tight">Registrar pago en efectivo (§14)</h2>
             <a href="{{ route('aporte.pagos.index') }}"><x-secondary-button type="button">Volver</x-secondary-button></a>
         </div>
     </x-slot>
@@ -23,9 +24,11 @@
 
             {{-- Instrucciones para el operador sobre cómo se debe distribuir el monto --}}
             <div class="bg-sky-50 border border-sky-200 text-sky-900 px-4 py-3 rounded text-sm">
-                Registro directo del dinero recibido en ventanilla (sin aviso previo). La distribución entre
-                cuotas de los hijos y meses la decide Administración; la <strong>suma distribuida debe ser
-                exactamente el monto recibido</strong>. Al registrar se emite el comprobante interno (sin valor fiscal).
+                Registro del dinero recibido <strong>en efectivo</strong> en secretaría. Primero reciba y cuente el dinero;
+                luego marque los meses que la familia paga (puede ser un pago parcial de un mes). La
+                <strong>suma distribuida debe ser exactamente el monto recibido</strong>. Al registrar se emite el
+                comprobante interno (sin valor fiscal): imprímalo y entréguelo a la familia.
+                Los pagos por QR no se registran aquí: se validan desde "Avisos de pago".
             </div>
 
             <div class="bg-white shadow-sm rounded-lg p-6">
@@ -119,7 +122,15 @@
                                 <x-text-input id="observacion" name="observacion" class="block mt-1 w-full" :value="old('observacion')" />
                             </div>
 
-                            <x-primary-button id="btn-registrar" disabled>Registrar pago y emitir comprobante</x-primary-button>
+                            <label class="flex items-start gap-2 text-sm bg-emerald-50 border border-emerald-200 rounded p-3 mb-3">
+                                <input type="checkbox" name="efectivo_recibido" value="1" class="mt-0.5 rounded border-gray-300 text-emerald-600"
+                                    @checked(old('efectivo_recibido')) required>
+                                <span><strong>Recibí y conté el dinero en efectivo</strong> por el monto indicado.</span>
+                            </label>
+                            <x-input-error :messages="$errors->get('efectivo_recibido')" class="mb-3" />
+                            <x-input-error :messages="$errors->get('aplicaciones')" class="mb-3" />
+
+                            <x-primary-button id="btn-registrar" disabled>Registrar pago en efectivo y emitir comprobante</x-primary-button>
                         </div>
                     @endif
                 </form>

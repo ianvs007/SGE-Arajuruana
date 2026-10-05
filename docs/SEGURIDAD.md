@@ -45,10 +45,39 @@ automatizadas ejecutadas (no declarativa). Los números de prueba remiten a
 
 ## 5. Escape de salida (XSS)
 
-- Blade escapa `{{ }}` por defecto. Los únicos `{!! !!}` son:
-  - `nl2br(e($contenido))` en correos (escapado explícito antes de `nl2br`);
-  - SVG de QR generado por `simple-qrcode` a partir de datos internos
-    controlados (prefijo `DEMO-NO-VALIDO|CI-...|monto`), sin entrada libre.
+- Blade escapa `{{ }}` por defecto. El único `{!! !!}` es
+  `nl2br(e($contenido))` en correos (escapado explícito antes de `nl2br`).
+
+## 5.1 Archivos subidos (comprobantes de pago y QR del colegio)
+
+- **Comprobante de la familia:** solo JPG, PNG o PDF de hasta 5 MB. El tipo se
+  valida por el **contenido real** del archivo (`mimetypes`, detección con
+  fileinfo), no solo por la extensión del nombre: un script renombrado a `.pdf`
+  se rechaza.
+- **QR del colegio:** solo JPG o PNG de hasta 2 MB; se rechaza SVG porque puede
+  contener scripts. Solo lo carga quien tiene `aporte.parametros`.
+- **Almacenamiento privado:** ambos se guardan en `storage/app/private`, fuera de
+  `public/`, con nombre aleatorio. No hay URL directa: se entregan por rutas
+  autenticadas que verifican el permiso registro por registro (el comprobante
+  solo lo ven la familia que lo subió y el personal que gestiona avisos), con
+  `X-Content-Type-Options: nosniff` y sin caché compartida.
+- **Duplicados:** se guarda el hash SHA-256 del comprobante; el mismo archivo no
+  puede presentarse en otro aviso pendiente o validado.
+
+## 5.2 Confirmación de pagos
+
+- El sistema **no se conecta al banco**. Un pago por QR solo se acredita cuando
+  un operador declara (casilla obligatoria) que verificó el ingreso en la
+  plataforma de su banco y registra el **número de operación**. Ese número es
+  único entre pagos vigentes (índice único en `pagos.operacion_bancaria_activa`,
+  que se libera al anular), así un mismo depósito no acredita dos avisos.
+- Nadie puede validar un aviso que informó él mismo.
+- La validación corre en una transacción con bloqueo de filas: no hay doble
+  procesamiento, la suma aplicada debe coincidir exactamente y cada mes no puede
+  recibir más que su saldo. Cada validación queda en auditoría con el operador,
+  la fecha y el número de operación.
+- En efectivo, el operador debe confirmar (casilla obligatoria) que recibió y
+  contó el dinero.
 
 ## 6. Contraseñas y secretos
 

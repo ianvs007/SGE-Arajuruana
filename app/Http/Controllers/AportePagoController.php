@@ -7,14 +7,12 @@ use App\Models\Gestion;
 use App\Models\Pago;
 use App\Models\User;
 use App\Services\AporteService;
-use App\Support\Dinero;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
-use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 /**
  * Controlador de los pagos validados del aporte mensual (módulo económico).
@@ -25,13 +23,12 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
  * - Listado y detalle de pagos: el responsable familiar solo ve sus pagos y los
  *   que se aplicaron a cuotas de sus hijos, mientras que el personal
  *   institucional con el permiso `aporte.cuotas.ver` puede ver todos.
- * - Registro directo en ventanilla: Administración puede registrar un pago que
- *   la familia entrega en persona, sin que exista un aviso previo. Se aplican
- *   las mismas reglas de distribución entre cuotas que al validar un aviso.
+ * - Registro de pagos en efectivo: el operador registra el pago que la familia
+ *   entrega en persona en secretaría, después de recibir y contar el dinero.
+ *   Se aplican las mismas reglas de distribución entre cuotas que al validar
+ *   un aviso por QR.
  * - Comprobante interno en PDF: tiene un número único de identificación, pero
  *   NO tiene valor fiscal, no lleva CUF y no debe parecerse a una factura.
- * - Código QR de demostración: es claramente simulado; escanearlo no acredita
- *   ningún pago, y por eso se marca como "DEMOSTRACIÓN" en pantalla y en el PDF.
  * - Anulación trazable: al anular un pago se revierten las aplicaciones a las
  *   cuotas, pero el registro se conserva en el histórico.
  *
@@ -90,7 +87,7 @@ class AportePagoController extends Controller
     }
 
     /**
-     * Muestra el formulario para registrar un pago directo en ventanilla.
+     * Muestra el formulario para registrar un pago en efectivo en secretaría.
      *
      * Lo usa Administración cuando la familia paga en persona. Se cargan las
      * cuotas con saldo de la gestión actual, agrupadas por alumno, y la lista
@@ -149,7 +146,10 @@ class AportePagoController extends Controller
             'aplicaciones.*.cuota_id' => ['required', 'integer', 'exists:cuotas_aporte,id'],
             'aplicaciones.*.monto' => ['required', 'numeric', 'min:0.01'],
             'observacion' => ['nullable', 'string', 'max:500'],
-        ], [], [], [
+            'efectivo_recibido' => ['accepted'],
+        ], [
+            'efectivo_recibido.accepted' => 'Antes de registrar debe recibir y contar el dinero en efectivo y marcar la casilla.',
+        ], [
             'padre_id' => 'responsable familiar',
             'monto' => 'monto recibido',
             'aplicaciones.*.cuota_id' => 'cuota',
@@ -174,14 +174,14 @@ class AportePagoController extends Controller
         }
 
         return redirect()->route('aporte.pagos.show', $pago)
-            ->with('success', 'Pago registrado y distribuido. Comprobante interno '.$pago->comprobante_numero.' emitido.');
+            ->with('success', 'Pago en efectivo registrado. Comprobante interno '.$pago->comprobante_numero.' emitido: imprímalo y entréguelo a la familia.');
     }
 
     /**
      * Muestra el detalle de un pago.
      *
-     * Incluye cómo se distribuyó entre las cuotas, el comprobante, el código
-     * QR de demostración y, si corresponde, los datos de su anulación.
+     * Incluye la forma de pago, cómo se distribuyó entre las cuotas, el
+     * comprobante interno y, si corresponde, los datos de su anulación.
      *
      * @return View Vista `aporte.pagos.show`.
      */
@@ -199,11 +199,6 @@ class AportePagoController extends Controller
 
         return view('aporte.pagos.show', [
             'pago' => $pago,
-            // El QR es solo de demostración: su contenido empieza con
-            // "DEMO-NO-VALIDO" para que quede claro que no acredita ningún pago.
-            'qrSvg' => QrCode::format('svg')->size(180)->generate(
-                'DEMO-NO-VALIDO|'.$pago->comprobante_numero.'|'.Dinero::aDecimal($pago->montoCentavos())
-            ),
         ]);
     }
 

@@ -40,11 +40,16 @@ class Pago extends Model
      * - padre_id: responsable familiar que realizó el pago.
      * - monto: monto informado; monto_validado: monto que Administración confirmó.
      * - estado: etapa del pago, ver la constante ESTADOS.
-     * - metodo / qr_payload / whatsapp_destino: datos del medio de pago usado
-     *   (por defecto, pago con QR y envío de constancia por WhatsApp).
-     * - comprobante_nota / nota_responsable: notas sobre el comprobante y la nota escrita del responsable.
+     * - metodo: forma de pago (ver la constante METODOS).
+     * - operacion_bancaria: número de operación que el operador verificó en su banco
+     *   (solo pagos por QR). operacion_bancaria_activa es la copia con restricción
+     *   única mientras el pago está vigente; se vacía al anularlo.
+     * - qr_payload / whatsapp_destino: datos del flujo antiguo de QR y WhatsApp.
+     * - comprobante_nota / nota_responsable: notas sobre el comprobante y la nota del responsable.
      * - solicitado_en / confirmado_por / confirmado_en / validado_en: marcas de
      *   tiempo y usuario del proceso de revisión.
+     * - verificado_en: momento en que el operador confirmó haber verificado el
+     *   dinero (en su banco si fue por QR, o contado en mano si fue en efectivo).
      * - observacion_operador: comentario interno de quien procesó el pago.
      */
     protected $fillable = [
@@ -58,6 +63,8 @@ class Pago extends Model
         'monto_validado',
         'estado',
         'metodo',
+        'operacion_bancaria',
+        'operacion_bancaria_activa',
         'qr_payload',
         'comprobante_nota',
         'nota_responsable',
@@ -66,6 +73,7 @@ class Pago extends Model
         'confirmado_por',
         'confirmado_en',
         'validado_en',
+        'verificado_en',
         'observacion_operador',
     ];
 
@@ -81,7 +89,36 @@ class Pago extends Model
             'solicitado_en' => 'datetime',
             'confirmado_en' => 'datetime',
             'validado_en' => 'datetime',
+            'verificado_en' => 'datetime',
         ];
+    }
+
+    /**
+     * Formas de pago. Los dos primeros son los del flujo actual; el resto
+     * aparece solo en datos registrados antes del cambio.
+     */
+    public const METODOS = [
+        'qr' => 'QR (transferencia bancaria)',
+        'efectivo' => 'Efectivo en secretaría',
+        'aviso_validado' => 'Aviso validado',
+        'ventanilla' => 'Ventanilla',
+        'qr_whatsapp' => 'QR y WhatsApp (flujo antiguo)',
+    ];
+
+    /** Devuelve el nombre legible de la forma de pago. */
+    public function nombreMetodo(): string
+    {
+        return self::METODOS[$this->metodo] ?? (string) $this->metodo;
+    }
+
+    /**
+     * Normaliza un número de operación bancaria para compararlo: sin espacios
+     * al inicio o al final, sin espacios internos y en mayúsculas. Así "ab 123"
+     * y "AB123" se reconocen como el mismo número.
+     */
+    public static function normalizarOperacion(?string $operacion): string
+    {
+        return Str::upper(preg_replace('/\s+/', '', (string) $operacion));
     }
 
     /** Estados del flujo actual, con nombres fáciles de entender tanto para avisos como para pagos. */

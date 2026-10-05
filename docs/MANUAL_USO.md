@@ -63,30 +63,44 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
    *Inscripciones* para vincular alumno-gestión-curso.
 3. **Generar cuotas**: *Cuotas* → «Generar cuotas de la gestión» (idempotente:
    no duplica). Eximir cuotas puntuales deja trazabilidad.
-4. **Validar avisos de pago**: *Avisos de pago* → revisar la nota escrita del
-   responsable → **Validar** distribuyendo el importe entre cuotas (hijos y
-   meses; la suma debe ser exactamente el monto validado). Se emite el
-   **comprobante interno PDF** («no válido como factura fiscal») con QR
-   **simulado**. Validar dos veces no duplica el pago.
-5. **Anular pagos**: en el detalle del pago → *Anular* con motivo obligatorio;
-   revierte saldos y queda el registro trazable (nunca se borra, §14).
-6. **Registrar asistencia**: *Asistencia* → fecha/curso/turno → estados por
+4. **Cargar el QR del colegio**: *Aportes config.* → sección «Datos para el pago
+   por QR» → subir la imagen del QR fijo que entregó el banco (JPG o PNG) y
+   completar banco, titular y número de cuenta. Las familias ven ese QR al
+   informar un pago; mientras no se cargue, solo se les ofrece pagar en efectivo.
+5. **Validar pagos por QR**: *Avisos de pago* → abrir el aviso pendiente → revisar
+   los **meses declarados** y el **comprobante** que subió la familia → entrar a la
+   **plataforma del banco** (fuera del sistema) y confirmar que el dinero ingresó →
+   marcar «Verifiqué en la plataforma del banco que el dinero ingresó», escribir el
+   **número de operación bancaria** y **Validar**. Se cancelan exactamente los meses
+   declarados (completos o parciales) y se emite el **comprobante interno PDF**
+   («no válido como factura fiscal»). Si el dinero no ingresó o no coincide,
+   **Rechazar** con un motivo. El sistema impide: usar dos veces el mismo número de
+   operación o el mismo comprobante, validar dos veces el mismo aviso y que alguien
+   valide un aviso que informó él mismo.
+6. **Registrar pagos en efectivo**: *Pagos* → «Registrar pago en efectivo» →
+   elegir al responsable, el monto recibido y los meses (se admiten pagos
+   parciales) → marcar «Recibí y conté el dinero en efectivo» → registrar.
+   Imprimir el comprobante interno y entregarlo a la familia.
+7. **Anular pagos**: en el detalle del pago → *Anular* con motivo obligatorio;
+   revierte saldos y queda el registro trazable (nunca se borra, §14). El número
+   de operación bancaria del pago anulado queda libre para un registro correcto.
+8. **Registrar asistencia**: *Asistencia* → fecha/curso/turno → estados por
    alumno. Sin clases programadas no se puede registrar (no genera ausentes
    falsos). Las correcciones quedan auditadas.
-7. **Salidas**: autorizar (*Salidas* → crear), luego registrar **salida
+9. **Salidas**: autorizar (*Salidas* → crear), luego registrar **salida
    efectiva** (nombre + documento de quien retira, verificación manual a la
    vista) y **retorno** (no puede ser anterior a la salida).
-8. **Incidencias**: registro con categorías configurables; marque
+10. **Incidencias**: registro con categorías configurables; marque
    *confidencial* los casos sensibles: solo Administración los ve (historial,
    reportes y panel los excluyen para el resto, §11).
-9. **Avisos institucionales**: *Avisos* → crear con audiencia (toda la
+11. **Avisos institucionales**: *Avisos* → crear con audiencia (toda la
    comunidad, un curso, los responsables de un alumno…) → **Publicar**
    (materializa destinatarios) → opcionalmente *Enviar correo* (fallos no
    bloquean) y/o enlace **WhatsApp** manual (usted pulsa y envía desde su
    teléfono; el sistema no confirma entrega).
-10. **Respaldos**: menú *Respaldos* → «Generar respaldo ahora» (mensual como
+12. **Respaldos**: menú *Respaldos* → «Generar respaldo ahora» (mensual como
     mínimo + copia externa). Detalle en `docs/RESPALDOS.md`.
-11. **Usuarios**: crear cuentas, asignar roles (el sistema impide asignar roles
+13. **Usuarios**: crear cuentas, asignar roles (el sistema impide asignar roles
     de rango superior al propio — anti-escalada §5), activar/inactivar.
 
 ### 3.2 Director / Coordinadora / Subdirector
@@ -118,9 +132,18 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
 - **Estado de cuenta**: cuotas por hijo (emitido/pagado/saldo/vencido). Padre y
   madre tienen cuentas separadas pero ven las MISMAS cuotas: la obligación es
   del alumno y no se duplica (§5).
-- **Informar un pago**: *Avisos de pago* → monto + **nota escrita** (sin
-  adjuntar imágenes). Informar NO reduce la deuda: queda *pendiente* hasta que
-  Administración lo valide; entonces se genera el comprobante interno.
+- **Pagar el aporte**: *Avisos de pago* → «Informar un pago». La pantalla
+  muestra las dos formas de pago:
+  - **Con QR**: marcar los meses de cada hijo que se pagan (cada mes empieza con
+    su saldo completo y puede bajarse para un pago parcial); el sistema calcula el
+    **total exacto** a pagar. Escanear el QR del colegio con la aplicación del
+    banco, pagar ese total y luego subir el **comprobante** del banco (JPG, PNG o
+    PDF, hasta 5 MB) con la fecha del pago. Informar NO reduce la deuda: el aviso
+    queda *pendiente* hasta que el personal verifique el ingreso en su banco y lo
+    valide; entonces se genera el comprobante interno. Un mes que ya está en otro
+    aviso pendiente no puede volver a marcarse.
+  - **En efectivo**: pagar en secretaría; allí registran el pago y entregan el
+    comprobante interno impreso.
 - **Comunicaciones**: avisos dirigidos a él (por rol, curso o familia),
   citaciones y su detalle. La **confirmación de lectura es opcional**: nunca
   bloquea el uso del sistema (§13).
@@ -136,13 +159,18 @@ en el servidor valida cada registro (modificar la URL no da acceso, §6).
 3. La obligación de aporte es **del alumno**: 3 hijos = 3 cuotas (Bs 120 con
    parámetros por defecto). Padre y madre con cuentas separadas no la duplican (§14).
 4. Un **aviso de pago pendiente** no reduce deuda ni genera comprobante; solo
-   la validación manual de Administración lo hace, y validar dos veces no
+   la validación manual del personal lo hace, y validar dos veces no
    duplica (§14, §20.13–20.14).
-5. La distribución de un pago (entre hijos y meses) la decide y registra
-   Administración; la suma aplicada debe ser exactamente el monto validado
-   (no hay saldo a favor ni excedentes, §14).
-6. El **QR es simulado** (demostración): no inicia pagos reales ni acredita
-   nada. El comprobante es **interno**, sin valor fiscal (§15).
+5. En el pago por QR la familia declara qué meses paga (completos o parciales)
+   y el sistema calcula el total; al validar se cancelan exactamente esos meses.
+   En efectivo, la distribución la registra el personal. En ambos casos la suma
+   aplicada debe ser exactamente el monto recibido (no hay saldo a favor ni
+   excedentes, §14).
+6. El sistema **no se conecta al banco**: el QR es la imagen fija de la cuenta
+   del colegio y la confirmación del pago la hace una persona, entrando a la
+   plataforma de su banco. Queda registrado quién verificó, cuándo y con qué
+   número de operación, que no puede repetirse en otro pago vigente. El
+   comprobante interno no tiene valor fiscal (§15).
 7. Abrir el enlace de **WhatsApp no marca entrega** ni confirma lectura: el
    envío es manual desde el teléfono de quien comparte (§13).
 8. Los **cambios de configuración** (horarios, parámetros de aporte) no
@@ -163,8 +191,9 @@ celular en la misma red (opcional, para mostrar el responsive).
 |---|---|---|---|
 | 1 | Login y navegación por rol | padre@sge.local | Ingresar; mostrar que el menú solo tiene Panel, Avisos, Pagos/Cuotas propias. Intentar entrar a `http://127.0.0.1:8000/respaldos` → acceso denegado (autorización en servidor). Cerrar sesión. |
 | 2 | Panel y estado de cuenta de la familia | padre@sge.local | Panel: deuda por hijo y avisos sin leer. Abrir un aviso → leer (la confirmación es opcional). Estado de cuenta de un hijo: cuotas feb–nov, lo pagado y el saldo. |
-| 3 | Informar un pago con nota escrita | madre@sge.local | *Avisos de pago* → informar Bs 40 con nota (sin adjuntos). Mostrar que la deuda SIGUE igual (aviso pendiente). |
-| 4 | Validación y distribución por Administración | administracion@sge.local | *Avisos de pago* → el pendiente → **Validar**: distribuir entre cuotas de dos hijos (o dos meses). Mostrar comprobante interno PDF con la leyenda «no válido como factura fiscal» y el QR marcado como SIMULACIÓN. Volver al estado de cuenta de la familia: saldos actualizados. |
+| 3 | Informar un pago por QR | madre@sge.local | *Avisos de pago* → «Informar un pago»: mostrar las dos opciones (QR y efectivo), marcar un mes completo y otro parcial, ver el total calculado y subir un comprobante (imagen o PDF). Mostrar que la deuda SIGUE igual (aviso pendiente). Requiere haber cargado antes el QR en *Aportes config.* |
+| 4 | Verificación bancaria y validación | administracion@sge.local | *Avisos de pago* → el pendiente: ver los meses declarados y el comprobante → explicar que se verifica en la plataforma del banco → marcar la casilla, escribir el número de operación y **Validar**. Mostrar el comprobante interno PDF («no válido como factura fiscal») con la forma de pago y el número de operación. Volver al estado de cuenta de la familia: saldos actualizados. Intentar validar otro aviso con el mismo número de operación → bloqueado. |
+| 4b | Pago en efectivo | administracion@sge.local | *Pagos* → «Registrar pago en efectivo» → elegir responsable, monto y meses → marcar «Recibí y conté el dinero en efectivo» → registrar e imprimir el comprobante. |
 | 5 | Doble validación imposible | administracion@sge.local | Intentar validar de nuevo el mismo aviso → error controlado, un solo pago registrado. |
 | 6 | Asistencia con calendario | administracion@sge.local | Registrar asistencia de 1ro de Primaria (mañana). Intentar registrar en la tarde → bloqueado (sin clases vespertinas: no genera ausentes). Mostrar el reporte oficial (pantalla → PDF → Excel) con denominador explícito y totales idénticos. |
 | 7 | Alcance del docente | docente@sge.local | Ver solo su curso (3ro de Secundaria); emitir una citación con acuerdos; descargar SU reporte de asistencia; intentar un reporte económico → denegado. |
@@ -173,7 +202,7 @@ celular en la misma red (opcional, para mostrar el responsive).
 | 10 | Importación Excel | administracion@sge.local | *Importar* → descargar plantilla → subir un CSV con un duplicado → previsualización con filas aceptadas/rechazadas y motivos → nada se guarda sin confirmar. |
 | 11 | Respaldo y auditoría | administracion@sge.local | *Respaldos* → generar → registro con checksum y ubicación fuera de `public/`. Mencionar `docs/RESPALDOS.md` (restauración probada en base separada). |
 | 12 | Responsive | (celular o F12) | Abrir la misma URL desde el celular en la red local: menú hamburguesa, tablas con scroll, formularios legibles. |
-| 13 | Pruebas de aceptación | (consola) | `php artisan test` → 151 pruebas verdes, incluidas las 21 mínimas de §20 (mapa en `docs/PRUEBAS_ACEPTACION.md`). |
+| 13 | Pruebas de aceptación | (consola) | `php artisan test` → 171 pruebas verdes, incluidas las 21 mínimas de §20 (mapa en `docs/PRUEBAS_ACEPTACION.md`). |
 
 Cierre sugerido: recordar los límites del alcance (§2): sin facturación fiscal,
 sin integración bancaria, sin WhatsApp automático, sin publicación en la nube;
@@ -181,6 +210,10 @@ la arquitectura queda lista para un futuro despliegue si la institución lo
 autoriza.
 
 ### 5.1 Evidencia del recorrido ejecutado (23/09/2026, navegador real)
+
+> Esta evidencia es anterior al pago por QR con comprobante (04/10/2026). Desde
+> entonces ya no existe el QR de demostración marcado como «SIMULACIÓN»: el QR es
+> el del banco del colegio y la validación exige la verificación bancaria.
 
 El recorrido se ejecutó de punta a punta contra la base MySQL real (no mocks).
 Resultados verificados, útiles como guion de defensa:

@@ -8,6 +8,33 @@ Leyenda: ✅ hecho · 🚧 en progreso · ⏳ pendiente · 🧪 probado (prueba 
 
 ---
 
+## ✅ Actualización 04/10/2026 — Pago por QR con comprobante y pago en efectivo
+
+Reemplaza el aviso «con nota escrita» y el QR simulado descritos en las etapas
+anteriores (esas secciones se conservan como historial).
+
+- ✅ **QR fijo del colegio**: Administración carga en *Aportes config.* la imagen
+  del QR (JPG/PNG, sin SVG) y los datos de la cuenta (banco, titular, número).
+- ✅ **Familia paga por QR e informa**: marca los meses que paga (saldo completo
+  o un monto parcial por mes), ve el total, indica la fecha y sube el comprobante
+  obligatorio (JPG/PNG/PDF, máx. 5 MB, tipo validado por contenido). Un mes ya
+  incluido en otro aviso pendiente no puede declararse otra vez; el mismo
+  comprobante no puede presentarse dos veces.
+- ✅ **Operador verifica en su banco** (el sistema no se conecta al banco): ve el
+  comprobante, marca la casilla obligatoria de verificación y escribe el número
+  de operación bancaria, único entre pagos vigentes. Al validar se cancelan
+  exactamente los meses declarados y se emite el comprobante interno. Nadie
+  valida su propio aviso.
+- ✅ **Pago en efectivo en secretaría**: con casilla obligatoria «Recibí y conté
+  el dinero en efectivo»; el pago queda con forma de pago *efectivo*.
+- ✅ **Módulo antiguo «Pagos QR (histórico)»** oculto del menú; las familias ya
+  no pueden generar pagos ahí. Se quitó el QR de demostración del comprobante.
+- ✅ Comprobantes y QR en almacenamiento privado, servidos por rutas con permiso.
+- 🧪 Migración `2026_10_04_000100_pago_qr_con_comprobante`; 19 pruebas nuevas en
+  `PagoQrComprobanteTest`; suite completa **171 pruebas en verde (814 aserciones)**.
+
+---
+
 ## 🔖 Punto de retomar (sesión del 22/09/2026, 19:20)
 
 **Estado:** Etapas 1–3 COMPLETADAS y validadas (**70 pruebas en verde, 264 aserciones**;

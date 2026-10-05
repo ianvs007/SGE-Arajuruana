@@ -5,9 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\AporteParametro;
 use App\Models\Gestion;
 use App\Services\AuditoriaService;
+use App\Support\DatosPago;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Controlador de los parámetros del aporte mensual por gestión (módulo económico).
@@ -47,6 +50,73 @@ class AporteParametroController extends Controller
             'gestiones' => $gestiones,
             'gestion' => $gestion,
             'parametro' => $parametro,
+            'datosPago' => DatosPago::obtener(),
+        ]);
+    }
+
+    /**
+     * Guarda los datos de la cuenta del colegio para el pago por QR.
+     *
+     * Administración sube la imagen del QR fijo que le dio el banco (JPG o PNG,
+     * máximo 2 MB) y escribe el banco, el titular y el número de cuenta. La
+     * imagen se guarda en el disco privado con un nombre al azar; si ya había
+     * una, se reemplaza y se borra la anterior. No se aceptan SVG porque pueden
+     * contener código.
+     *
+     * @return RedirectResponse Regresa a la pantalla de parámetros.
+     */
+    public function actualizarDatosPago(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'banco' => ['required', 'string', 'max:100'],
+            'titular' => ['required', 'string', 'max:150'],
+            'cuenta' => ['required', 'string', 'max:60'],
+            'qr' => [DatosPago::tieneQr() ? 'nullable' : 'required', 'file', 'mimes:jpg,jpeg,png', 'mimetypes:image/jpeg,image/png', 'max:2048'],
+        ], [], [
+            'qr' => 'imagen del QR',
+            'cuenta' => 'número de cuenta',
+        ]);
+
+        $valores = [
+            'banco' => $data['banco'],
+            'titular' => $data['titular'],
+            'cuenta' => $data['cuenta'],
+        ];
+
+        if ($request->hasFile('qr')) {
+            $anterior = DatosPago::obtener()['qr_ruta'];
+            $valores['qr_ruta'] = $request->file('qr')->store('datos-pago', 'local');
+            $valores['qr_mime'] = $request->file('qr')->getMimeType();
+            if ($anterior) {
+                Storage::disk('local')->delete($anterior);
+            }
+        }
+
+        DatosPago::guardar($valores);
+
+        AuditoriaService::registrar('aporte.datos_pago.actualizar', null, [
+            'banco' => $data['banco'],
+            'qr_reemplazado' => $request->hasFile('qr'),
+        ]);
+
+        return redirect()->route('aporte.parametros.edit')
+            ->with('success', 'Datos de pago guardados. Las familias ya ven el QR y la cuenta del colegio al informar un pago.');
+    }
+
+    /**
+     * Entrega la imagen del QR del colegio a un usuario que inició sesión.
+     *
+     * @return StreamedResponse La imagen, o 404 si todavía no se subió.
+     */
+    public function qr(): StreamedResponse
+    {
+        $datos = DatosPago::obtener();
+        abort_unless($datos['qr_ruta'] && Storage::disk('local')->exists($datos['qr_ruta']), 404);
+
+        return Storage::disk('local')->response($datos['qr_ruta'], 'qr-pago', [
+            'Content-Type' => $datos['qr_mime'] ?? 'image/png',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cache-Control' => 'private, max-age=300',
         ]);
     }
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\AporteParametro;
 use App\Models\AvisoPago;
+use App\Models\AvisoPagoCuota;
 use App\Models\CuotaAporte;
 use App\Models\Estudiante;
 use App\Models\Gestion;
@@ -13,7 +14,11 @@ use App\Models\PagoAnulacion;
 use App\Models\PagoAplicacion;
 use App\Models\User;
 use App\Support\Dinero;
+use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -21,7 +26,7 @@ use Illuminate\Validation\ValidationException;
  *
  * Concentra toda la lógica de dinero del colegio: la generación de las
  * cuotas mensuales de aporte, la validación de los avisos de pago que envían
- * las familias, el registro de pagos en ventanilla, el rechazo de avisos, la
+ * las familias, el registro de pagos en efectivo, el rechazo de avisos, la
  * anulación de pagos y el cálculo del estado de cuenta de cada alumno.
  * Pusimos estas reglas en un servicio, y no en los controladores, para que
  * la pantalla, los reportes, el seeder de demostración y las pruebas usen
@@ -35,10 +40,15 @@ use Illuminate\Validation\ValidationException;
  * - La obligación de pagar es del ALUMNO: se emite una cuota por alumno y
  *   por mes (una familia con 3 hijos y un aporte de Bs 40 debe Bs 120 al mes).
  * - Se aceptan abonos parciales, pagos adelantados y cuotas atrasadas.
- * - Un mismo pago puede repartirse entre varios hijos y varios meses; la
- *   distribución la decide Administración.
+ * - Un mismo pago puede repartirse entre varios hijos y varios meses.
+ * - Hay dos formas de pagar: por QR (la familia paga con el QR del colegio,
+ *   informa qué meses paga y sube su comprobante; el operador verifica en su
+ *   banco y valida) y en efectivo (la familia paga en secretaría y el operador
+ *   registra el pago después de recibir y contar el dinero).
  * - Validar un aviso crea UN único pago, que es el registro oficial del
- *   movimiento de dinero.
+ *   movimiento de dinero. Se valida sobre los mismos meses que declaró la
+ *   familia, con el número de operación bancaria verificado, que no puede
+ *   repetirse entre pagos vigentes. Nadie valida un aviso que informó él mismo.
  * - Todos los cálculos se hacen en centavos enteros (clase Dinero) y nunca
  *   con números de punto flotante.
  * - Las validaciones se hacen dentro de transacciones con bloqueo de filas
@@ -210,19 +220,170 @@ final class AporteService
     }
 
     /**
-     * Valida un aviso de pago enviado por una familia.
+     * Registra el aviso con el que una familia informa que pagó por QR.
      *
-     * Cuando un responsable familiar informa que pagó, se crea un "aviso" en
-     * estado pendiente. Al validarlo, Administración o Coordinación indica
-     * cómo se reparte el dinero entre las cuotas, y este método crea el pago
-     * único, registra cada aplicación sobre las cuotas, actualiza sus saldos
-     * y genera el número de comprobante interno. Al final el aviso queda
-     * marcado como validado y se deja constancia en la auditoría.
+     * La familia marca los meses (cuotas de sus hijos) que paga y cuánto
+     * destina a cada uno: el saldo completo o un abono parcial. El total del
+     * aviso es la suma de esos montos, calculada aquí y no tomada del
+     * formulario. Antes de guardar se comprueba que:
+     * - cada cuota sea de un hijo del responsable y tenga saldo pendiente;
+     * - ningún monto supere lo que se debe de ese mes;
+     * - ningún mes esté ya incluido en otro aviso pendiente de validación;
+     * - el mismo comprobante (misma huella SHA-256) no esté en otro aviso
+     *   pendiente o validado.
+     * El comprobante se guarda en el disco privado con un nombre al azar. El
+     * aviso queda pendiente: la deuda NO cambia hasta que el operador lo valide.
+     *
+     * @param  array<int, array{cuota_id:int, monto:string|float|int}>  $cuotas  Meses declarados y monto de cada uno.
+     * @param  string  $fechaPago  Fecha en que se hizo el pago (Y-m-d).
+     *
+     * @throws ValidationException Si alguna regla no se cumple; no queda nada guardado.
+     */
+    public static function informarAviso(
+        User $padre,
+        array $cuotas,
+        string $fechaPago,
+        UploadedFile $comprobante,
+        ?string $nota = null,
+    ): AvisoPago {
+        if (empty($cuotas)) {
+            throw ValidationException::withMessages([
+                'cuotas' => 'Marque al menos un mes que esté pagando.',
+            ]);
+        }
+
+        $cuotaIds = array_map(fn ($linea) => (int) $linea['cuota_id'], $cuotas);
+        if (count($cuotaIds) !== count(array_unique($cuotaIds))) {
+            throw ValidationException::withMessages([
+                'cuotas' => 'El mismo mes no puede marcarse dos veces.',
+            ]);
+        }
+
+        $hash = hash_file('sha256', $comprobante->getRealPath());
+        $ruta = null;
+
+        try {
+            return DB::transaction(function () use ($padre, $cuotas, $cuotaIds, $fechaPago, $comprobante, $nota, $hash, &$ruta) {
+                $repetido = AvisoPago::where('comprobante_hash', $hash)
+                    ->whereIn('estado', ['pendiente', 'validado'])
+                    ->exists();
+                if ($repetido) {
+                    throw ValidationException::withMessages([
+                        'comprobante' => 'Este comprobante ya fue presentado en otro aviso pendiente o validado. Suba el comprobante de este pago.',
+                    ]);
+                }
+
+                // Bloqueamos las cuotas para que nadie cambie sus saldos mientras revisamos.
+                $registros = CuotaAporte::with('estudiante')
+                    ->whereIn('id', $cuotaIds)->lockForUpdate()->get()->keyBy('id');
+                $hijos = $padre->estudiantes()->pluck('estudiantes.id')
+                    ->map(fn ($id) => (int) $id)->all();
+
+                $totalCentavos = 0;
+                $lineas = [];
+                $gestionId = null;
+                foreach ($cuotas as $linea) {
+                    $cuota = $registros->get((int) $linea['cuota_id']);
+                    if (! $cuota || ! in_array((int) $cuota->estudiante_id, $hijos, true)) {
+                        throw ValidationException::withMessages([
+                            'cuotas' => 'Uno de los meses marcados no corresponde a sus representados.',
+                        ]);
+                    }
+
+                    $mes = $cuota->etiquetaPeriodo().' de '.$cuota->estudiante?->nombreCompleto();
+                    if (! in_array($cuota->estado, ['pendiente', 'parcial'], true)) {
+                        throw ValidationException::withMessages([
+                            'cuotas' => "{$mes} no tiene saldo pendiente.",
+                        ]);
+                    }
+
+                    $centavos = Dinero::aCentavos($linea['monto']);
+                    if ($centavos <= 0) {
+                        throw ValidationException::withMessages([
+                            'cuotas' => "El monto para {$mes} debe ser mayor que cero.",
+                        ]);
+                    }
+                    if ($centavos > $cuota->saldoCentavos()) {
+                        throw ValidationException::withMessages([
+                            'cuotas' => "El monto para {$mes} (".Dinero::formato($centavos).') supera lo que se debe ('.Dinero::formato($cuota->saldoCentavos()).').',
+                        ]);
+                    }
+
+                    $enOtroAviso = AvisoPagoCuota::where('cuota_id', $cuota->id)
+                        ->whereHas('aviso', fn ($q) => $q->where('estado', 'pendiente'))
+                        ->exists();
+                    if ($enOtroAviso) {
+                        throw ValidationException::withMessages([
+                            'cuotas' => "{$mes} ya está en otro aviso pendiente de validación. Espere su revisión o anule ese aviso antes de informar otro.",
+                        ]);
+                    }
+
+                    $totalCentavos += $centavos;
+                    $lineas[] = ['cuota' => $cuota, 'centavos' => $centavos];
+                    $gestionId ??= $cuota->gestion_id;
+                }
+
+                $ruta = $comprobante->store('comprobantes/'.now()->format('Y/m'), 'local');
+
+                $aviso = AvisoPago::create([
+                    'referencia' => AvisoPago::generarReferencia(),
+                    'padre_id' => $padre->id,
+                    'gestion_id' => $gestionId ?? Gestion::actual()?->id,
+                    'monto_declarado' => Dinero::aDecimal($totalCentavos),
+                    'fecha_pago' => $fechaPago,
+                    'nota' => $nota,
+                    'comprobante_ruta' => $ruta,
+                    'comprobante_nombre' => Str::limit(basename($comprobante->getClientOriginalName()), 200, ''),
+                    'comprobante_mime' => $comprobante->getMimeType(),
+                    'comprobante_tamano' => $comprobante->getSize(),
+                    'comprobante_hash' => $hash,
+                    'estado' => 'pendiente',
+                    'informado_en' => now(),
+                ]);
+
+                foreach ($lineas as $linea) {
+                    AvisoPagoCuota::create([
+                        'aviso_id' => $aviso->id,
+                        'cuota_id' => $linea['cuota']->id,
+                        'monto' => Dinero::aDecimal($linea['centavos']),
+                    ]);
+                }
+
+                AuditoriaService::registrar('aporte.aviso.informar', $aviso, [
+                    'monto_centavos' => $totalCentavos,
+                    'meses' => count($lineas),
+                    'fecha_pago' => $fechaPago,
+                ]);
+
+                return $aviso;
+            });
+        } catch (\Throwable $e) {
+            // Si algo falló después de guardar el archivo, lo borramos para no dejar huérfanos.
+            if ($ruta) {
+                Storage::disk('local')->delete($ruta);
+            }
+            throw $e;
+        }
+    }
+
+    /**
+     * Valida un aviso de pago por QR enviado por una familia.
+     *
+     * El operador solo llega aquí después de revisar en la plataforma de su
+     * banco que el dinero ingresó; el sistema no se conecta con el banco. Este
+     * método crea el pago único, cancela los meses que declaró la familia con
+     * los montos declarados, actualiza los saldos y genera el número de
+     * comprobante interno. Además:
+     * - exige el número de operación bancaria y bloquea si ya está en otro pago vigente;
+     * - impide que alguien valide un aviso que informó él mismo;
+     * - si el aviso declara meses, usa esos meses y no otros. Los avisos antiguos
+     *   sin meses declarados usan la distribución que indique el operador.
      *
      * @param  AvisoPago  $aviso  Aviso que se va a validar.
-     * @param  array<int, array{cuota_id:int, monto:string|float|int}>  $aplicaciones  Reparto del monto por cuota.
+     * @param  array<int, array{cuota_id:int, monto:string|float|int}>  $aplicaciones  Reparto por cuota (solo avisos sin meses declarados).
      * @param  User  $operador  Usuario que valida.
      * @param  string|null  $observacion  Comentario opcional del operador.
+     * @param  string|null  $operacionBancaria  Número de operación verificado en el banco.
      * @return Pago El pago creado.
      *
      * @throws ValidationException Si algo no cuadra; en ese caso no se guarda ningún registro parcial.
@@ -232,67 +393,113 @@ final class AporteService
         array $aplicaciones,
         User $operador,
         ?string $observacion = null,
+        ?string $operacionBancaria = null,
     ): Pago {
-        // Sin al menos una cuota no hay forma de distribuir el dinero.
-        if (empty($aplicaciones)) {
+        $operacion = Pago::normalizarOperacion($operacionBancaria);
+        if ($operacion === '' || strlen($operacion) > 60) {
             throw ValidationException::withMessages([
-                'aplicaciones' => 'Indique al menos una cuota para distribuir el pago.',
+                'operacion_bancaria' => 'Indique el número de operación bancaria (máximo 60 caracteres) que verificó en la plataforma del banco.',
             ]);
         }
 
-        return DB::transaction(function () use ($aviso, $aplicaciones, $operador, $observacion) {
-            // Protección contra el doble procesamiento: volvemos a leer el aviso
-            // bloqueando su fila (lockForUpdate) y revisamos su estado. Si dos
-            // peticiones llegan a la vez (por ejemplo, por un doble clic), la
-            // segunda espera a que termine la primera, encuentra el aviso ya
-            // validado y se detiene sin crear un segundo pago.
-            $avisoBloqueado = AvisoPago::whereKey($aviso->id)->lockForUpdate()->firstOrFail();
+        try {
+            return DB::transaction(function () use ($aviso, $aplicaciones, $operador, $observacion, $operacion) {
+                // Protección contra el doble procesamiento: volvemos a leer el aviso
+                // bloqueando su fila (lockForUpdate) y revisamos su estado. Si dos
+                // peticiones llegan a la vez (por ejemplo, por un doble clic), la
+                // segunda espera a que termine la primera, encuentra el aviso ya
+                // validado y se detiene sin crear un segundo pago.
+                $avisoBloqueado = AvisoPago::whereKey($aviso->id)->lockForUpdate()->firstOrFail();
 
-            if (! $avisoBloqueado->estaPendiente()) {
-                throw ValidationException::withMessages([
-                    'aviso' => 'Este aviso ya fue procesado (estado: '.$avisoBloqueado->nombreEstado().'). Recargue la pantalla.',
+                if (! $avisoBloqueado->estaPendiente()) {
+                    throw ValidationException::withMessages([
+                        'aviso' => 'Este aviso ya fue procesado (estado: '.$avisoBloqueado->nombreEstado().'). Recargue la pantalla.',
+                    ]);
+                }
+
+                // Separación de funciones: quien informa un pago no puede validarlo.
+                if ($avisoBloqueado->padre_id === $operador->id) {
+                    throw ValidationException::withMessages([
+                        'aviso' => 'No puede validar un aviso que usted mismo informó. Debe validarlo otro operador.',
+                    ]);
+                }
+
+                // Se cancelan exactamente los meses que declaró la familia.
+                $declaradas = $avisoBloqueado->cuotasDeclaradas()->get();
+                if ($declaradas->isNotEmpty()) {
+                    $aplicaciones = $declaradas
+                        ->map(fn ($d) => ['cuota_id' => $d->cuota_id, 'monto' => $d->monto])
+                        ->all();
+                }
+
+                if (empty($aplicaciones)) {
+                    throw ValidationException::withMessages([
+                        'aplicaciones' => 'Indique al menos una cuota para distribuir el pago.',
+                    ]);
+                }
+
+                if (Pago::where('operacion_bancaria_activa', $operacion)->exists()) {
+                    throw self::operacionRepetida($operacion);
+                }
+
+                // Creamos el pago y sus aplicaciones con el núcleo compartido. El
+                // monto es el que informó la familia en el aviso, y quien paga es
+                // el responsable que lo envió.
+                $pago = self::crearPagoConAplicaciones(
+                    aplicaciones: $aplicaciones,
+                    montoCentavos: $avisoBloqueado->montoCentavos(),
+                    avisadorId: $avisoBloqueado->padre_id,
+                    gestionId: $avisoBloqueado->gestion_id,
+                    aviso: $avisoBloqueado,
+                    operador: $operador,
+                    notaResponsable: $avisoBloqueado->nota,
+                    observacion: $observacion,
+                    metodo: 'qr',
+                    operacionBancaria: $operacion,
+                );
+
+                // Marcamos el aviso como validado, guardando quién y cuándo lo revisó.
+                $avisoBloqueado->update([
+                    'estado' => 'validado',
+                    'revisado_por' => $operador->id,
+                    'revisado_en' => now(),
                 ]);
+
+                // Dejamos constancia en la bitácora de auditoría.
+                AuditoriaService::registrar('pagos.validar', $pago, [
+                    'aviso_id' => $avisoBloqueado->id,
+                    'monto_centavos' => $avisoBloqueado->montoCentavos(),
+                    'aplicaciones' => $pago->aplicaciones()->count(),
+                    'operacion_bancaria' => $operacion,
+                ]);
+
+                return $pago;
+            });
+        } catch (UniqueConstraintViolationException $e) {
+            // Última barrera: si dos operadores registran el mismo número a la vez,
+            // la restricción única de la base de datos detiene al segundo.
+            if (str_contains($e->getMessage(), 'operacion_bancaria_activa')) {
+                throw self::operacionRepetida($operacion);
             }
+            throw $e;
+        }
+    }
 
-            // Creamos el pago y sus aplicaciones con el núcleo compartido. El
-            // monto es el que informó la familia en el aviso, y quien paga es
-            // el responsable que lo envió.
-            $pago = self::crearPagoConAplicaciones(
-                aplicaciones: $aplicaciones,
-                montoCentavos: $avisoBloqueado->montoCentavos(),
-                avisadorId: $avisoBloqueado->padre_id,
-                gestionId: $avisoBloqueado->gestion_id,
-                aviso: $avisoBloqueado,
-                operador: $operador,
-                notaResponsable: $avisoBloqueado->nota,
-                observacion: $observacion,
-            );
-
-            // Marcamos el aviso como validado, guardando quién y cuándo lo revisó.
-            $avisoBloqueado->update([
-                'estado' => 'validado',
-                'revisado_por' => $operador->id,
-                'revisado_en' => now(),
-            ]);
-
-            // Dejamos constancia en la bitácora de auditoría.
-            AuditoriaService::registrar('pagos.validar', $pago, [
-                'aviso_id' => $avisoBloqueado->id,
-                'monto_centavos' => $avisoBloqueado->montoCentavos(),
-                'aplicaciones' => $pago->aplicaciones()->count(),
-            ]);
-
-            return $pago;
-        });
+    /** Error de validación para un número de operación bancaria ya usado. */
+    private static function operacionRepetida(string $operacion): ValidationException
+    {
+        return ValidationException::withMessages([
+            'operacion_bancaria' => "El número de operación {$operacion} ya está registrado en otro pago vigente. Verifique que no sea un comprobante repetido.",
+        ]);
     }
 
     /**
-     * Registra un pago hecho directamente en ventanilla, sin aviso previo.
+     * Registra un pago en efectivo hecho en secretaría, sin aviso previo.
      *
-     * Es el caso en que el padre o la madre paga en persona en la secretaría.
-     * Administración ingresa el monto recibido y cómo se distribuye entre las
-     * cuotas. Usa el mismo núcleo y las mismas reglas que la validación de
-     * avisos, para que ambos caminos den resultados idénticos.
+     * Es el caso en que el padre o la madre paga en persona. El operador recibe
+     * y cuenta el dinero, y después ingresa el monto y los meses que cancela.
+     * Usa el mismo núcleo y las mismas reglas que la validación de avisos, para
+     * que ambos caminos den resultados idénticos.
      *
      * @param  array<int, array{cuota_id:int, monto:string|float|int}>  $aplicaciones  Reparto del monto por cuota.
      * @param  string|float|int  $monto  Dinero recibido en bolivianos.
@@ -327,9 +534,11 @@ final class AporteService
                 operador: $operador,
                 notaResponsable: null,
                 observacion: $observacion,
+                metodo: 'efectivo',
+                operacionBancaria: null,
             );
 
-            AuditoriaService::registrar('pagos.registro_directo', $pago, [
+            AuditoriaService::registrar('pagos.registro_efectivo', $pago, [
                 'monto_centavos' => $pago->montoCentavos(),
                 'aplicaciones' => $pago->aplicaciones()->count(),
             ]);
@@ -354,6 +563,8 @@ final class AporteService
      * @param  array<int, array{cuota_id:int, monto:string|float|int}>  $aplicaciones  Reparto del monto por cuota.
      * @param  int  $montoCentavos  Monto total del pago en centavos.
      * @param  int  $avisadorId  ID del responsable familiar que paga.
+     * @param  string  $metodo  Forma de pago: "qr" o "efectivo".
+     * @param  string|null  $operacionBancaria  Número de operación verificado (solo QR).
      * @return Pago El pago creado.
      */
     private static function crearPagoConAplicaciones(
@@ -365,6 +576,8 @@ final class AporteService
         User $operador,
         ?string $notaResponsable,
         ?string $observacion,
+        string $metodo,
+        ?string $operacionBancaria,
     ): Pago {
         // Primero verificamos que ninguna cuota aparezca dos veces en el mismo
         // pago: si al quitar repetidos la lista se achica, hay duplicados.
@@ -445,8 +658,7 @@ final class AporteService
 
         // Con todas las reglas cumplidas, creamos el pago: es el registro único
         // del movimiento de dinero e incluye una referencia y un número de
-        // comprobante interno. El método indica si vino de un aviso validado o
-        // si se cobró en ventanilla.
+        // comprobante interno. El método indica si se pagó por QR o en efectivo.
         $pago = Pago::create([
             'referencia' => Pago::generarReferencia(),
             'comprobante_numero' => Pago::generarNumeroComprobante(),
@@ -456,9 +668,12 @@ final class AporteService
             'monto' => Dinero::aDecimal($montoCentavos),
             'monto_validado' => Dinero::aDecimal($montoCentavos),
             'estado' => 'validado',
-            'metodo' => $aviso ? 'aviso_validado' : 'ventanilla',
+            'metodo' => $metodo,
+            'operacion_bancaria' => $operacionBancaria,
+            'operacion_bancaria_activa' => $operacionBancaria,
             'nota_responsable' => $notaResponsable,
             'validado_en' => now(),
+            'verificado_en' => now(),
             'confirmado_por' => $operador->id,
             'confirmado_en' => now(),
             'observacion_operador' => $observacion,
@@ -560,8 +775,14 @@ final class AporteService
                 ];
             }
 
-            // Marcamos el pago como anulado sin borrarlo.
-            $bloqueado->update(['estado' => 'anulado', 'observacion_operador' => 'Anulado: '.$motivo]);
+            // Marcamos el pago como anulado sin borrarlo. El número de operación
+            // bancaria queda en el historial, pero se libera para que pueda volver
+            // a usarse si el aviso se valida de nuevo.
+            $bloqueado->update([
+                'estado' => 'anulado',
+                'observacion_operador' => 'Anulado: '.$motivo,
+                'operacion_bancaria_activa' => null,
+            ]);
 
             // Si el pago venía de un aviso de la familia, ese aviso vuelve a
             // quedar pendiente para que pueda validarse de nuevo con la

@@ -15,12 +15,12 @@
         <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Detalle de cuenta</h2>
             {{--
-                El botón para registrar un pago solo aparece si el usuario tiene permiso y el cargo
-                todavía tiene saldo (estado pendiente o parcial). Si ya está pagado no tiene sentido.
+                El botón para registrar un pago solo aparece para el personal con permiso y si el
+                cargo todavía tiene saldo. Las familias ya no pagan desde aquí: usan "Informar un pago".
             --}}
             <div class="flex flex-wrap gap-2">
                 @can('pagos.ver')
-                    @if (in_array($cargo->estado, ['pendiente', 'parcial'], true) && $pendiente > 0)
+                    @if (! auth()->user()->esResponsableFamiliar() && in_array($cargo->estado, ['pendiente', 'parcial'], true) && $pendiente > 0)
                         <a href="{{ route('pagos.create', $cargo) }}"><x-primary-button type="button">Registrar pago</x-primary-button></a>
                     @endif
                 @endcan

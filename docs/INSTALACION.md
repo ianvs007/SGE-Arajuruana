@@ -323,15 +323,17 @@ se guardan en `storage/app/private/respaldos/` (**fuera de `public/`**).
 ## 12. Verificación post-instalación (5 minutos)
 
 ```powershell
-php artisan test          # esperado: 151 passed
+php artisan test          # esperado: 171 passed
 php artisan about         # resumen de entorno (PHP, MySQL, drivers)
 ```
 
 Luego, en el navegador como `administracion@sge.local`:
 1. El **Panel** muestra conteos (estudiantes, avisos pendientes de validación).
 2. **Cuotas** lista las cuotas feb–nov de la gestión 2026.
-3. **Avisos de pago** tiene uno pendiente demo → valídelo para ver el
-   comprobante PDF interno con QR simulado.
+3. **Avisos de pago** tiene uno pendiente demo con su comprobante → márquelo como
+   verificado en el banco, escriba un número de operación y valídelo para ver el
+   comprobante PDF interno. En **Aportes config.** cargue el QR del banco del
+   colegio para que las familias puedan pagar por QR.
 4. **Reportes** → *Aporte por curso* → descargue PDF y Excel: los totales
    coinciden con la pantalla.
 5. **Respaldos** → *Generar respaldo ahora* → queda registrado con checksum.

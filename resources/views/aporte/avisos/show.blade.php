@@ -1,14 +1,25 @@
 {{--
     Vista: Detalle de un aviso de pago
-    Muestra toda la información de un aviso: estado, monto declarado, nota del
-    responsable y quién lo revisó. Desde aquí Administración valida el aviso
-    repartiendo el monto entre las cuotas, o lo rechaza indicando el motivo.
-    El responsable familiar puede anular su propio aviso mientras siga pendiente.
+    Muestra toda la información de un aviso: estado, total, fecha del pago,
+    meses que declara pagar la familia y el comprobante que subió.
+
+    Desde aquí el operador (Administración, Director o Coordinadora):
+    1. Revisa el comprobante y los meses declarados.
+    2. Entra a la plataforma de SU banco (fuera del sistema) y verifica que el
+       dinero ingresó a la cuenta del colegio.
+    3. Marca la casilla de verificación, escribe el número de operación bancaria
+       y valida: recién ahí se descuenta la deuda de esos meses.
+    Si el pago no ingresó o algo no coincide, rechaza el aviso con un motivo.
+    El responsable familiar puede anular su propio aviso mientras siga pendiente,
+    y nadie puede validar un aviso que informó él mismo.
+
+    Los avisos antiguos (sin meses declarados) conservan el formulario en el que
+    el operador reparte el monto entre las cuotas.
 
     Variables que recibe del controlador:
-    - $aviso: el aviso de pago con sus relaciones (padre, revisor, pago).
-    - $cuotasPorAlumno: cuotas con saldo de los hijos del responsable, agrupadas
-      por estudiante; se usan en el formulario de validación.
+    - $aviso: el aviso de pago con sus relaciones (padre, revisor, pago, meses declarados).
+    - $cuotasPorAlumno: solo para avisos antiguos, cuotas con saldo de los hijos
+      del responsable agrupadas por estudiante.
 --}}
 <x-app-layout>
     <x-slot name="header">
@@ -18,12 +29,25 @@
         </div>
     </x-slot>
 
+    @php
+        $declarados = $aviso->cuotasDeclaradas;
+        $puedeValidar = auth()->user()->can('aporte.avisos.gestionar') && $aviso->estaPendiente();
+        $esPropio = $aviso->padre_id === auth()->id();
+        // Meses declarados que ya no pueden cobrarse por el monto declarado
+        // (por ejemplo, porque se pagaron en efectivo mientras el aviso esperaba).
+        $mesesConflicto = $declarados->filter(fn ($linea) => ! $linea->cuota
+            || ! in_array($linea->cuota->estado, ['pendiente', 'parcial'], true)
+            || $linea->cuota->saldoCentavos() < $linea->montoCentavos());
+        $erroresValidacion = collect(['aviso', 'verificado_banco', 'operacion_bancaria', 'aplicaciones', 'monto'])
+            ->flatMap(fn ($campo) => $errors->get($campo))->all();
+    @endphp
+
     <div class="py-8">
         <div class="max-w-5xl mx-auto sm:px-6 lg:px-8 space-y-6">
             @include('partials.flash')
 
             {{--
-                Encabezado del aviso: estado con su color, monto declarado y los datos
+                Encabezado del aviso: estado con su color, total y los datos
                 principales. Definimos un arreglo de colores para cada estado posible.
             --}}
             <div class="bg-white shadow-sm rounded-lg p-6">
@@ -34,7 +58,7 @@
                         <span class="inline-flex items-center px-3 py-1 rounded-full font-semibold {{ $colores[$aviso->estado] ?? '' }}">{{ $aviso->nombreEstado() }}</span>
                     </div>
                     <div class="text-right text-sm">
-                        <div class="text-slate-500 text-xs">Monto declarado</div>
+                        <div class="text-slate-500 text-xs">{{ $declarados->isNotEmpty() ? 'Total pagado con QR' : 'Monto declarado' }}</div>
                         <div class="text-xl font-semibold text-slate-800">{{ \App\Support\Dinero::formato($aviso->montoCentavos()) }}</div>
                     </div>
                 </div>
@@ -48,8 +72,14 @@
                         <dt class="text-slate-500">Fecha del aviso</dt>
                         <dd class="font-medium">{{ optional($aviso->informado_en)->format('d/m/Y H:i') }}</dd>
                     </div>
+                    @if ($aviso->fecha_pago)
+                        <div>
+                            <dt class="text-slate-500">Fecha en que dice haber pagado</dt>
+                            <dd class="font-medium">{{ $aviso->fecha_pago->format('d/m/Y') }}</dd>
+                        </div>
+                    @endif
                     <div class="sm:col-span-2">
-                        <dt class="text-slate-500">Nota escrita del responsable</dt>
+                        <dt class="text-slate-500">Nota del responsable</dt>
                         <dd class="font-medium whitespace-pre-wrap">{{ $aviso->nota ?: '— (sin nota) —' }}</dd>
                     </div>
                     {{-- El motivo solo tiene sentido si el aviso fue rechazado --}}
@@ -59,7 +89,7 @@
                             <dd class="font-medium text-rose-700">{{ $aviso->motivo_rechazo }}</dd>
                         </div>
                     @endif
-                    {{-- Datos de la persona de Administración que revisó el aviso, si ya fue revisado --}}
+                    {{-- Datos de la persona que revisó el aviso, si ya fue revisado --}}
                     @if ($aviso->revisado_por)
                         <div class="sm:col-span-2">
                             <dt class="text-slate-500">Revisado por</dt>
@@ -73,7 +103,10 @@
                     <div class="mt-4 bg-emerald-50 border border-emerald-200 rounded p-3 text-sm">
                         Pago validado · comprobante interno
                         <a href="{{ route('aporte.pagos.show', $aviso->pago) }}" class="font-mono text-sky-700 hover:underline">{{ $aviso->pago->comprobante_numero }}</a>
-                        por {{ \App\Support\Dinero::formato($aviso->pago->montoCentavos()) }}.
+                        por {{ \App\Support\Dinero::formato($aviso->pago->montoCentavos()) }}
+                        @if ($aviso->pago->operacion_bancaria)
+                            · operación bancaria <span class="font-mono">{{ $aviso->pago->operacion_bancaria }}</span>
+                        @endif
                     </div>
                 @endif
 
@@ -81,7 +114,7 @@
                     Botón para anular el aviso. Solo lo ve el mismo responsable que lo informó y
                     solo mientras esté pendiente; una vez revisado ya no se puede anular.
                 --}}
-                @if ($aviso->estaPendiente() && auth()->user()->can('aporte.avisos.informar') && $aviso->padre_id === auth()->id())
+                @if ($aviso->estaPendiente() && auth()->user()->can('aporte.avisos.informar') && $esPropio)
                     <form method="POST" action="{{ route('aporte.avisos.anular', $aviso) }}" class="mt-4"
                         onsubmit="return confirm('¿Anular este aviso pendiente?')">
                         @csrf
@@ -90,37 +123,136 @@
                 @endif
             </div>
 
-            {{--
-                Sección de validación. Solo la ve quien tiene permiso para gestionar avisos
-                (Administración) y solo si el aviso sigue pendiente. Aquí se reparte el monto
-                declarado entre las cuotas de uno o varios hijos.
-            --}}
-            @can('aporte.avisos.gestionar')
-                @if ($aviso->estaPendiente())
-                    <div class="bg-white shadow-sm rounded-lg p-6">
-                        <h3 class="font-semibold text-slate-800 mb-1">Validar y distribuir el pago</h3>
-                        <p class="text-xs text-slate-500 mb-4">
-                            Asigne el monto declarado a las cuotas correspondientes (varios hijos y meses).
-                            La <strong>suma distribuida debe ser exactamente {{ \App\Support\Dinero::formato($aviso->montoCentavos()) }}</strong>;
-                            cada aplicación no puede superar el saldo de su cuota. Al validar se crea el pago único
-                            y el comprobante interno (transaccional, sin doble procesamiento).
-                        </p>
+            {{-- Meses que la familia declara pagar con este aviso --}}
+            @if ($declarados->isNotEmpty())
+                <div class="bg-white shadow-sm rounded-lg p-6">
+                    <h3 class="font-semibold text-slate-800 mb-3">Meses que está pagando</h3>
+                    <table class="min-w-full text-sm">
+                        <thead class="text-left text-xs text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="py-2">Estudiante</th>
+                                <th class="py-2">Mes</th>
+                                <th class="py-2 text-right">Monto declarado</th>
+                                @if ($aviso->estaPendiente())
+                                    <th class="py-2 text-right">Saldo actual</th>
+                                @endif
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @foreach ($declarados as $linea)
+                                <tr class="{{ $aviso->estaPendiente() && $mesesConflicto->contains($linea) ? 'bg-rose-50' : '' }}">
+                                    <td class="py-2">{{ $linea->cuota?->estudiante?->nombreCompleto() }}</td>
+                                    <td class="py-2">{{ $linea->cuota?->etiquetaPeriodo() }}</td>
+                                    <td class="py-2 text-right font-medium">
+                                        {{ \App\Support\Dinero::formato($linea->montoCentavos()) }}
+                                        @if ($linea->cuota && $linea->montoCentavos() < $linea->cuota->montoCentavos())
+                                            <span class="text-[11px] text-slate-500">(parcial)</span>
+                                        @endif
+                                    </td>
+                                    @if ($aviso->estaPendiente())
+                                        <td class="py-2 text-right">{{ $linea->cuota ? \App\Support\Dinero::formato($linea->cuota->saldoCentavos()) : '—' }}</td>
+                                    @endif
+                                </tr>
+                            @endforeach
+                        </tbody>
+                        <tfoot class="border-t border-slate-200 font-semibold">
+                            <tr>
+                                <td class="py-2" colspan="2">Total</td>
+                                <td class="py-2 text-right">{{ \App\Support\Dinero::formato($aviso->montoCentavos()) }}</td>
+                                @if ($aviso->estaPendiente())
+                                    <td></td>
+                                @endif
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            @endif
 
-                        {{-- Si no hay cuotas con saldo no se puede validar; se sugiere generar cuotas o rechazar --}}
-                        @if ($cuotasPorAlumno->isEmpty())
+            {{-- Comprobante subido por la familia; se sirve por una ruta protegida --}}
+            @if ($aviso->tieneComprobante())
+                <div class="bg-white shadow-sm rounded-lg p-6">
+                    <div class="flex justify-between items-center mb-3 gap-3">
+                        <h3 class="font-semibold text-slate-800">Comprobante del banco</h3>
+                        <a href="{{ route('aporte.avisos.comprobante', $aviso) }}" target="_blank" rel="noopener"
+                            class="text-sm text-sky-700 hover:underline">Abrir en otra pestaña</a>
+                    </div>
+                    @if ($aviso->comprobanteEsImagen())
+                        <img src="{{ route('aporte.avisos.comprobante', $aviso) }}" alt="Comprobante del aviso {{ $aviso->referencia }}"
+                            class="max-h-[32rem] w-auto mx-auto border border-slate-200 rounded">
+                    @else
+                        <p class="text-sm text-slate-600">
+                            El comprobante es un documento PDF.
+                            <a href="{{ route('aporte.avisos.comprobante', $aviso) }}" target="_blank" rel="noopener" class="text-sky-700 hover:underline">Ver el PDF</a>.
+                        </p>
+                    @endif
+                    <p class="text-xs text-slate-400 mt-2">El comprobante es una referencia: el pago solo se confirma verificándolo en la plataforma del banco.</p>
+                </div>
+            @endif
+
+            {{--
+                Sección de validación. Solo la ve quien puede gestionar avisos y solo si el
+                aviso sigue pendiente. Quien informó el aviso no puede validarlo.
+            --}}
+            @if ($puedeValidar)
+                <div class="bg-white shadow-sm rounded-lg p-6">
+                    @if ($esPropio)
+                        <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded p-3 text-sm">
+                            Usted informó este aviso, por eso no puede validarlo ni rechazarlo. Debe revisarlo otro operador.
+                        </div>
+                    @else
+                        <h3 class="font-semibold text-slate-800 mb-1">Verificar el pago en el banco y validarlo</h3>
+
+                        @if ($erroresValidacion)
+                            <div class="bg-rose-50 border border-rose-200 text-rose-800 rounded p-3 text-sm my-3">
+                                <ul class="list-disc list-inside">
+                                    @foreach ($erroresValidacion as $mensaje)
+                                        <li>{{ $mensaje }}</li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        @endif
+
+                        <ol class="list-decimal list-inside text-sm text-slate-600 space-y-1 mb-4">
+                            <li>Revise el comprobante y los meses declarados.</li>
+                            <li>Ingrese a la <strong>plataforma de su banco</strong> (fuera de este sistema) y confirme que ingresaron
+                                <strong>{{ \App\Support\Dinero::formato($aviso->montoCentavos()) }}</strong> a la cuenta del colegio
+                                @if ($aviso->fecha_pago) alrededor del {{ $aviso->fecha_pago->format('d/m/Y') }}@endif.</li>
+                            <li>Si el dinero ingresó, marque la casilla, copie el número de operación del banco y valide.
+                                Si no ingresó o no coincide, rechace el aviso explicando el motivo.</li>
+                        </ol>
+
+                        @if ($declarados->isNotEmpty())
+                            {{-- Aviso con meses declarados: se validan exactamente esos meses --}}
+                            @if ($mesesConflicto->isNotEmpty())
+                                <div class="bg-rose-50 border border-rose-200 text-rose-800 rounded p-3 text-sm">
+                                    Algún mes declarado ya no tiene saldo suficiente (por ejemplo, se pagó en efectivo mientras este aviso esperaba).
+                                    No se puede validar: rechace el aviso explicando el motivo para que la familia informe de nuevo.
+                                </div>
+                            @else
+                                <form method="POST" action="{{ route('aporte.avisos.validar', $aviso) }}" class="space-y-4"
+                                    onsubmit="return confirm('¿Confirma que verificó en el banco el ingreso de {{ \App\Support\Dinero::formato($aviso->montoCentavos()) }}?')">
+                                    @csrf
+                                    @include('aporte.avisos.partials.verificacion-banco')
+                                    <x-primary-button>Validar pago y emitir comprobante</x-primary-button>
+                                </form>
+                            @endif
+                        @elseif ($cuotasPorAlumno->isEmpty())
                             <div class="bg-amber-50 border border-amber-200 text-amber-800 rounded p-3 text-sm">
                                 Los representados de este responsable no tienen cuotas con saldo en la gestión del aviso.
                                 Genere cuotas o rechace el aviso si no corresponde.
                             </div>
                         @else
+                            {{--
+                                Aviso antiguo sin meses declarados: el operador reparte el monto entre las
+                                cuotas. La suma debe ser exactamente el monto del aviso y cada aplicación no
+                                puede superar el saldo de su cuota.
+                            --}}
                             <form method="POST" action="{{ route('aporte.avisos.validar', $aviso) }}" id="form-validar">
                                 @csrf
-                                {{--
-                                    Por cada estudiante listamos sus cuotas con saldo. Cada cuota tiene una
-                                    casilla para marcarla y un campo para el monto a aplicar; ambos inician
-                                    deshabilitados y el script de abajo los activa al marcar la casilla, así
-                                    solo se envían al servidor las cuotas seleccionadas.
-                                --}}
+                                <p class="text-xs text-slate-500 mb-4">
+                                    Este aviso no indica los meses. Asigne el monto a las cuotas correspondientes:
+                                    la <strong>suma distribuida debe ser exactamente {{ \App\Support\Dinero::formato($aviso->montoCentavos()) }}</strong>.
+                                </p>
                                 <div class="space-y-5">
                                     @foreach ($cuotasPorAlumno as $alumnoId => $cuotasAlumno)
                                         <div>
@@ -154,27 +286,19 @@
                                     @endforeach
                                 </div>
 
-                                {{--
-                                    Resumen de la distribución: monto del aviso frente a la suma asignada.
-                                    El botón de validar empieza deshabilitado y solo se activa cuando ambas
-                                    cantidades coinciden exactamente.
-                                --}}
-                                <div class="mt-5 border-t border-slate-200 pt-4">
-                                    <div class="flex justify-between text-sm mb-1">
-                                        <span class="text-slate-600">Monto del aviso</span>
-                                        <span class="font-medium" id="monto-objetivo" data-centavos="{{ $aviso->montoCentavos() }}">{{ \App\Support\Dinero::formato($aviso->montoCentavos()) }}</span>
+                                <div class="mt-5 border-t border-slate-200 pt-4 space-y-4">
+                                    <div>
+                                        <div class="flex justify-between text-sm mb-1">
+                                            <span class="text-slate-600">Monto del aviso</span>
+                                            <span class="font-medium" id="monto-objetivo" data-centavos="{{ $aviso->montoCentavos() }}">{{ \App\Support\Dinero::formato($aviso->montoCentavos()) }}</span>
+                                        </div>
+                                        <div class="flex justify-between text-sm">
+                                            <span class="text-slate-600">Suma distribuida</span>
+                                            <span class="font-semibold" id="suma-distribuida">Bs 0,00</span>
+                                        </div>
+                                        <div id="aviso-suma" class="text-xs mt-1 hidden"></div>
                                     </div>
-                                    <div class="flex justify-between text-sm mb-3">
-                                        <span class="text-slate-600">Suma distribuida</span>
-                                        <span class="font-semibold" id="suma-distribuida">Bs 0,00</span>
-                                    </div>
-                                    <div id="aviso-suma" class="text-xs mb-3 hidden"></div>
-
-                                    <div class="mb-3">
-                                        <x-input-label for="observacion" value="Observación del operador (opcional)" />
-                                        <x-text-input id="observacion" name="observacion" class="block mt-1 w-full" :value="old('observacion')" />
-                                    </div>
-
+                                    @include('aporte.avisos.partials.verificacion-banco')
                                     <x-primary-button id="btn-validar" disabled>Validar pago y emitir comprobante</x-primary-button>
                                 </div>
                             </form>
@@ -192,98 +316,93 @@
                             <h4 class="font-medium text-slate-700">Rechazar aviso</h4>
                             <div>
                                 <x-input-label for="motivo_rechazo" value="Motivo del rechazo (obligatorio)" />
-                                <x-text-input id="motivo_rechazo" name="motivo_rechazo" class="block mt-1 w-full" required />
+                                <x-text-input id="motivo_rechazo" name="motivo_rechazo" class="block mt-1 w-full" required
+                                    placeholder="Ej.: El dinero no ingresó a la cuenta del colegio / el monto no coincide." />
                                 <x-input-error :messages="$errors->get('motivo_rechazo')" class="mt-2" />
                             </div>
                             <x-danger-button>Rechazar aviso</x-danger-button>
                         </form>
-                    </div>
-                @endif
-            @endcan
+                    @endif
+                </div>
+            @endif
         </div>
     </div>
 
     {{--
-        Script de apoyo para la distribución del pago. Solo se carga cuando el usuario
-        puede validar y existen cuotas. Habilita los campos de las cuotas marcadas,
-        recalcula la suma en centavos (para evitar errores de redondeo) y no deja
-        enviar el formulario hasta que la suma sea igual al monto del aviso.
-        De todas formas, el servidor vuelve a validar estas reglas.
+        Script de apoyo para repartir un aviso antiguo. Habilita los campos de las
+        cuotas marcadas, recalcula la suma en centavos (para evitar errores de
+        redondeo) y no deja enviar el formulario hasta que la suma sea igual al
+        monto del aviso. De todas formas, el servidor vuelve a validar estas reglas.
     --}}
-    @can('aporte.avisos.gestionar')
-        @if ($aviso->estaPendiente() && $cuotasPorAlumno->isNotEmpty())
-            <script>
-                // Distribución en el cliente: habilita campos de cuotas marcadas,
-                // recalcula la suma y exige que coincida EXACTAMENTE con el aviso
-                // (la regla autoritativa también se valida en el servidor, §20.15).
-                document.addEventListener('DOMContentLoaded', function () {
-                    const objetivo = parseInt(document.getElementById('monto-objetivo').dataset.centavos, 10);
-                    const sumaEl = document.getElementById('suma-distribuida');
-                    const avisoEl = document.getElementById('aviso-suma');
-                    const btn = document.getElementById('btn-validar');
+    @if ($puedeValidar && ! $esPropio && $declarados->isEmpty() && $cuotasPorAlumno->isNotEmpty())
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                const objetivo = parseInt(document.getElementById('monto-objetivo').dataset.centavos, 10);
+                const sumaEl = document.getElementById('suma-distribuida');
+                const avisoEl = document.getElementById('aviso-suma');
+                const btn = document.getElementById('btn-validar');
 
-                    const aCentavos = (v) => Math.round((parseFloat(v) || 0) * 100);
-                    const formatoBs = (cent) => 'Bs ' + (cent / 100).toFixed(2).replace('.', ',');
+                const aCentavos = (v) => Math.round((parseFloat(v) || 0) * 100);
+                const formatoBs = (cent) => 'Bs ' + (cent / 100).toFixed(2).replace('.', ',');
 
-                    function recalcular() {
-                        let suma = 0;
-                        let hayMarcada = false;
-                        let excedeSaldo = false;
+                function recalcular() {
+                    let suma = 0;
+                    let hayMarcada = false;
+                    let excedeSaldo = false;
 
-                        document.querySelectorAll('.cuota-check').forEach(function (check) {
-                            const id = check.dataset.cuota;
-                            const monto = document.querySelector('.cuota-monto[data-for="' + id + '"]');
-                            const idInput = document.querySelector('.cuota-id-input[data-for="' + id + '"]');
-                            if (check.checked) {
-                                hayMarcada = true;
-                                monto.disabled = false;
-                                idInput.disabled = false;
-                                const cent = aCentavos(monto.value);
-                                suma += cent;
-                                if (cent > parseInt(monto.dataset.saldoCent, 10) || cent <= 0) {
-                                    excedeSaldo = true;
-                                }
-                            } else {
-                                monto.disabled = true;
-                                idInput.disabled = true;
-                                monto.value = '';
+                    document.querySelectorAll('.cuota-check').forEach(function (check) {
+                        const id = check.dataset.cuota;
+                        const monto = document.querySelector('.cuota-monto[data-for="' + id + '"]');
+                        const idInput = document.querySelector('.cuota-id-input[data-for="' + id + '"]');
+                        if (check.checked) {
+                            hayMarcada = true;
+                            monto.disabled = false;
+                            idInput.disabled = false;
+                            const cent = aCentavos(monto.value);
+                            suma += cent;
+                            if (cent > parseInt(monto.dataset.saldoCent, 10) || cent <= 0) {
+                                excedeSaldo = true;
                             }
-                        });
-
-                        sumaEl.textContent = formatoBs(suma);
-                        avisoEl.classList.remove('hidden');
-
-                        let ok = false;
-                        if (!hayMarcada) {
-                            avisoEl.textContent = 'Marque al menos una cuota.';
-                            avisoEl.className = 'text-xs mb-3 text-slate-500';
-                        } else if (excedeSaldo) {
-                            avisoEl.textContent = 'Cada aplicación debe ser positiva y no superar el saldo de su cuota.';
-                            avisoEl.className = 'text-xs mb-3 text-rose-600';
-                        } else if (suma === objetivo) {
-                            avisoEl.textContent = '✓ La suma distribuida coincide con el monto del aviso.';
-                            avisoEl.className = 'text-xs mb-3 text-emerald-600';
-                            ok = true;
                         } else {
-                            avisoEl.textContent = 'La suma distribuida (' + formatoBs(suma) + ') debe ser exactamente ' +
-                                formatoBs(objetivo) + '. No se admite excedente ni saldo a favor automático.';
-                            avisoEl.className = 'text-xs mb-3 text-rose-600';
-                        }
-
-                        btn.disabled = !ok;
-                    }
-
-                    document.querySelectorAll('.cuota-check').forEach((c) => c.addEventListener('change', recalcular));
-                    document.querySelectorAll('.cuota-monto').forEach((m) => m.addEventListener('input', recalcular));
-
-                    document.getElementById('form-validar').addEventListener('submit', function (e) {
-                        if (btn.disabled) {
-                            e.preventDefault();
-                            alert('La suma distribuida debe ser exactamente el monto del aviso.');
+                            monto.disabled = true;
+                            idInput.disabled = true;
+                            monto.value = '';
                         }
                     });
+
+                    sumaEl.textContent = formatoBs(suma);
+                    avisoEl.classList.remove('hidden');
+
+                    let ok = false;
+                    if (!hayMarcada) {
+                        avisoEl.textContent = 'Marque al menos una cuota.';
+                        avisoEl.className = 'text-xs mt-1 text-slate-500';
+                    } else if (excedeSaldo) {
+                        avisoEl.textContent = 'Cada aplicación debe ser positiva y no superar el saldo de su cuota.';
+                        avisoEl.className = 'text-xs mt-1 text-rose-600';
+                    } else if (suma === objetivo) {
+                        avisoEl.textContent = '✓ La suma distribuida coincide con el monto del aviso.';
+                        avisoEl.className = 'text-xs mt-1 text-emerald-600';
+                        ok = true;
+                    } else {
+                        avisoEl.textContent = 'La suma distribuida (' + formatoBs(suma) + ') debe ser exactamente ' +
+                            formatoBs(objetivo) + '. No se admite excedente ni saldo a favor automático.';
+                        avisoEl.className = 'text-xs mt-1 text-rose-600';
+                    }
+
+                    btn.disabled = !ok;
+                }
+
+                document.querySelectorAll('.cuota-check').forEach((c) => c.addEventListener('change', recalcular));
+                document.querySelectorAll('.cuota-monto').forEach((m) => m.addEventListener('input', recalcular));
+
+                document.getElementById('form-validar').addEventListener('submit', function (e) {
+                    if (btn.disabled) {
+                        e.preventDefault();
+                        alert('La suma distribuida debe ser exactamente el monto del aviso.');
+                    }
                 });
-            </script>
-        @endif
-    @endcan
+            });
+        </script>
+    @endif
 </x-app-layout>

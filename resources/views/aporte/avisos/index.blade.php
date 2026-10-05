@@ -15,15 +15,15 @@
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Avisos de pago (§14)</h2>
             {{--
-                Botones de acción según permisos: el responsable puede informar un pago y
-                Administración puede registrar un pago hecho directamente en ventanilla.
+                Botones de acción según permisos: el responsable puede informar un pago hecho
+                con QR y el personal puede registrar un pago recibido en efectivo en secretaría.
             --}}
             <div class="flex gap-2">
                 @can('aporte.avisos.informar')
                     <a href="{{ route('aporte.avisos.create') }}"><x-primary-button type="button">Informar un pago</x-primary-button></a>
                 @endcan
                 @can('aporte.avisos.gestionar')
-                    <a href="{{ route('aporte.pagos.create') }}"><x-secondary-button type="button">Registrar pago en ventanilla</x-secondary-button></a>
+                    <a href="{{ route('aporte.pagos.create') }}"><x-secondary-button type="button">Registrar pago en efectivo</x-secondary-button></a>
                 @endcan
             </div>
         </div>

@@ -73,7 +73,7 @@ final class Permisos
         'aporte.cuotas.gestionar', // generar cuotas y eximir (Administración)
         'aporte.cuotas.ver',       // ver cuotas y el estado económico institucional
         'aporte.avisos.gestionar', // validar o rechazar avisos de pago
-        'aporte.avisos.informar',  // la familia informa un pago con una nota escrita
+        'aporte.avisos.informar',  // la familia informa un pago por QR con su comprobante
         'aporte.pagos.anular',     // anular un pago validado dejando registro del motivo
         'aporte.estado_cuenta',    // estado de cuenta (la familia solo ve el de sus representados)
         // Transversales
@@ -180,8 +180,8 @@ final class Permisos
             'avisos.ver',      // solo los que le corresponden
             'cuentas.ver',     // solo de sus representados
             'pagos.ver',       // solo los propios
-            'pagos.informar',  // informa un pago con nota escrita, sin adjuntos
-            'aporte.avisos.informar', // avisa el pago del aporte con una nota escrita
+            'pagos.informar',  // consulta del flujo antiguo de pagos
+            'aporte.avisos.informar', // informa el pago del aporte por QR con comprobante
             'aporte.estado_cuenta',   // solo el estado de cuenta de sus representados
             'historial.ver',   // solo lo autorizado de sus representados
         ],

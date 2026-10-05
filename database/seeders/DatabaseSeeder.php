@@ -6,6 +6,7 @@ use App\Models\AporteParametro;
 use App\Models\Asistencia;
 use App\Models\Aviso;
 use App\Models\AvisoPago;
+use App\Models\AvisoPagoCuota;
 use App\Models\CalendarioExcepcion;
 use App\Models\Citacion;
 use App\Models\CuotaAporte;
@@ -22,6 +23,7 @@ use App\Services\AporteService;
 use App\Services\NotificacionService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * Seeder principal: carga datos de demostración ficticios.
@@ -384,49 +386,82 @@ class DatabaseSeeder extends Seeder
         // duplica cuotas si se ejecuta de nuevo, y la obligación es por alumno.
         AporteService::generarCuotasDeGestion($gestion, $admin);
 
-        // Flujo demo completo: el padre avisa que pagó Bs 80 y Administración lo
-        // valida repartiendo el monto entre las cuotas de febrero de dos hijos,
-        // con lo que se emite el comprobante interno. Solo se crea si todavía no
-        // existe, para no repetir el pago al volver a ejecutar el seeder.
-        if (! AvisoPago::where('referencia', 'AVI-DEMO-000001')->exists()) {
-            $avisoDemo = AvisoPago::create([
+        // Flujo demo completo: el padre informa que pagó con QR febrero de sus
+        // dos hijos (Bs 40 cada uno) y Administración, después de verificar el
+        // ingreso en su banco, lo valida con el número de operación. Solo se
+        // crea si todavía no existe, para no repetir el pago.
+        $cuotaHija = CuotaAporte::where('gestion_id', $gestion->id)
+            ->where('estudiante_id', $estudiante1->id)->where('mes', 2)->first();
+        $cuotaHijo = CuotaAporte::where('gestion_id', $gestion->id)
+            ->where('estudiante_id', $estudiante2->id)->where('mes', 2)->first();
+
+        if ($cuotaHija && $cuotaHijo && ! AvisoPago::where('referencia', 'AVI-DEMO-000001')->exists()) {
+            $avisoDemo = AvisoPago::create(array_merge([
                 'referencia' => 'AVI-DEMO-000001',
                 'padre_id' => $padre->id,
                 'gestion_id' => $gestion->id,
                 'monto_declarado' => '80.00',
-                'nota' => 'Depositamos Bs 80 en la caja del colegio; corresponde a febrero de María Fernanda y José Luis (demo).',
+                'nota' => 'Pago de febrero de María Fernanda y José Luis (demo).',
                 'estado' => 'pendiente',
                 'informado_en' => now()->subDays(2),
-            ]);
+                'fecha_pago' => now()->subDays(2)->toDateString(),
+            ], $this->comprobanteDemo('AVI-DEMO-000001', 'Bs 80,00')));
 
-            // Buscamos la cuota de febrero de cada hijo y, si ambas existen,
-            // validamos el aviso aplicando Bs 40 a cada una.
-            $cuotaHija = CuotaAporte::where('gestion_id', $gestion->id)
-                ->where('estudiante_id', $estudiante1->id)->where('mes', 2)->first();
-            $cuotaHijo = CuotaAporte::where('gestion_id', $gestion->id)
-                ->where('estudiante_id', $estudiante2->id)->where('mes', 2)->first();
-
-            if ($cuotaHija && $cuotaHijo) {
-                AporteService::validarAviso($avisoDemo, [
-                    ['cuota_id' => $cuotaHija->id, 'monto' => '40.00'],
-                    ['cuota_id' => $cuotaHijo->id, 'monto' => '40.00'],
-                ], $admin, 'Validado contra depósito en caja (demo).');
+            foreach ([$cuotaHija, $cuotaHijo] as $cuota) {
+                AvisoPagoCuota::create(['aviso_id' => $avisoDemo->id, 'cuota_id' => $cuota->id, 'monto' => '40.00']);
             }
+
+            AporteService::validarAviso($avisoDemo, [], $admin,
+                'Ingreso verificado en la plataforma del banco (demo).', 'DEMO-OP-0001');
         }
 
         // Aviso pendiente demo, para que la bandeja de validación de
-        // Administración no aparezca vacía. Mientras siga pendiente NO reduce la
-        // deuda ni genera comprobante.
-        AvisoPago::firstOrCreate(
-            ['referencia' => 'AVI-DEMO-000002'],
-            [
+        // Administración no aparezca vacía: la madre informa que pagó con QR
+        // marzo de Ana Gabriela. Mientras siga pendiente NO reduce la deuda.
+        $cuotaMarzo = CuotaAporte::where('gestion_id', $gestion->id)
+            ->whereHas('estudiante', fn ($q) => $q->where('codigo', 'EST-2026-003'))
+            ->where('mes', 3)->first();
+
+        if ($cuotaMarzo && ! AvisoPago::where('referencia', 'AVI-DEMO-000002')->exists()) {
+            $avisoPendiente = AvisoPago::create(array_merge([
+                'referencia' => 'AVI-DEMO-000002',
                 'padre_id' => $madre->id,
                 'gestion_id' => $gestion->id,
                 'monto_declarado' => '40.00',
-                'nota' => 'Pagué marzo de Ana Gabriela en la caja (demo). Favor validar.',
+                'nota' => 'Pagué marzo de Ana Gabriela con el QR (demo). Favor validar.',
                 'estado' => 'pendiente',
                 'informado_en' => now()->subDay(),
-            ]
-        );
+                'fecha_pago' => now()->subDay()->toDateString(),
+            ], $this->comprobanteDemo('AVI-DEMO-000002', 'Bs 40,00')));
+
+            AvisoPagoCuota::create(['aviso_id' => $avisoPendiente->id, 'cuota_id' => $cuotaMarzo->id, 'monto' => '40.00']);
+        }
+    }
+
+    /**
+     * Guarda en el disco privado un comprobante PDF de demostración y devuelve
+     * los campos del aviso que lo describen.
+     *
+     * @return array<string, mixed>
+     */
+    private function comprobanteDemo(string $referencia, string $monto): array
+    {
+        $texto = "Comprobante de demostracion {$referencia} - {$monto}";
+        $contenido = "%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+            ."2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+            ."3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 400 120]/Contents 4 0 R/Resources<</Font<</F1 5 0 R>>>>>>endobj\n"
+            .'4 0 obj<</Length '.(strlen($texto) + 30).">>stream\nBT /F1 12 Tf 20 60 Td ({$texto}) Tj ET\nendstream endobj\n"
+            ."5 0 obj<</Type/Font/Subtype/Type1/BaseFont/Helvetica>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n";
+
+        $ruta = 'comprobantes/demo/'.$referencia.'.pdf';
+        Storage::disk('local')->put($ruta, $contenido);
+
+        return [
+            'comprobante_ruta' => $ruta,
+            'comprobante_nombre' => $referencia.'.pdf',
+            'comprobante_mime' => 'application/pdf',
+            'comprobante_tamano' => strlen($contenido),
+            'comprobante_hash' => hash('sha256', $contenido),
+        ];
     }
 }

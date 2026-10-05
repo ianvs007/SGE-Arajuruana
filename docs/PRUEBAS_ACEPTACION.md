@@ -9,24 +9,28 @@ Con XAMPP iniciado, en la raíz del proyecto:
 
 ```bat
 set PATH=C:\xampp\php;%PATH%
-php artisan test                                  :: suite completa (151 pruebas)
+php artisan test                                  :: suite completa (171 pruebas)
 php artisan test --filter PruebasAceptacionTest   :: solo las 23 de §20
 php artisan test --filter test_20_12              :: solo el punto §20.12
 ```
 
 - Las pruebas corren sobre **SQLite en memoria** (`phpunit.xml`): no tocan ni
   contaminan la base MySQL del colegio.
-- Salida esperada: `Tests: 151 passed (678 assertions)`.
+- Salida esperada: `Tests: 171 passed (814 assertions)`.
 - Si alguna falla tras un cambio, el nombre indica qué punto de §20 se rompió.
 - Cada prueba automatizada se llama igual que su punto de los requerimientos
   (`test_20_N_...`), para contrastar §20 punto por punto ante el jurado.
 
-Ejecución real más reciente (23/09/2026, PHP 8.2.12, SQLite en memoria para las
-pruebas + humo HTTP sobre MySQL 8):
+Ejecución real más reciente (04/10/2026, PHP 8.2.12, SQLite en memoria), tras
+incorporar el pago por QR con comprobante, verificación bancaria y pago en efectivo:
 
-- **Suite completa:** `php artisan test` → **151 pruebas en verde (678 aserciones)**.
+- **Suite completa:** `php artisan test` → **171 pruebas en verde (814 aserciones)**.
 - **Suite específica de aceptación:** `php artisan test --filter=PruebasAceptacion`
-  → **23 pruebas en verde (182 aserciones)**.
+  → **23 pruebas en verde (199 aserciones)**.
+- **Pago por QR con comprobante:** `php artisan test --filter=PagoQrComprobante`
+  → 19 pruebas (archivo falso, comprobante obligatorio o repetido, meses ajenos,
+  monto mayor al saldo, casilla de verificación y nº de operación obligatorios,
+  operación repetida, autovalidación, acceso privado al comprobante, QR SVG).
 
 > Las pruebas automatizadas se complementan con la **revisión de interfaz**
 > (checklist responsive en `docs/PRUEBAS_ACEPTACION.md` §B) tal como pide §20.
@@ -47,10 +51,10 @@ pruebas + humo HTTP sobre MySQL 8):
 | 20.10 | Tres alumnos generan Bs 120/mes; Bs 400 por gestión completa | `test_20_10_tres_alumnos_generan_120_mensual_y_400_anual_cada_uno` + `test_tres_hijos_generan_tres_cuotas_por_mes` | `PruebasAceptacionTest` / `EtapaCuatroTest` | ✅ |
 | 20.11 | Abono de Bs 20 sobre cuota de Bs 40 deja saldo Bs 20 | `test_20_11_abono_parcial_de_20_deja_saldo_20` + `test_abono_parcial_deja_cuota_en_estado_parcial` | `PruebasAceptacionTest` / `EtapaCuatroTest` | ✅ |
 | 20.12 | Bs 80 aplicables a dos cuotas (de un hijo o de dos) | `test_20_12_bs_80_se_distribuyen_entre_dos_hijos` + `test_un_pago_se_distribuye_entre_dos_hijos_y_meses` | `PruebasAceptacionTest` / `EtapaCuatroTest` | ✅ |
-| 20.13 | Avisos pendientes no reducen deuda ni generan comprobantes | `test_20_13_aviso_pendiente_no_reduce_deuda_ni_genera_comprobante` + `test_aviso_rechazado_deja_la_deuda_intacta` | `PruebasAceptacionTest` / `EtapaCuatroTest` | ✅ |
+| 20.13 | Avisos pendientes no reducen deuda ni generan comprobantes | `test_20_13_aviso_pendiente_no_reduce_deuda_ni_genera_comprobante` + `test_aviso_rechazado_deja_la_deuda_intacta` + `test_validar_exige_casilla_de_verificacion_y_numero_de_operacion` | `PruebasAceptacionTest` / `EtapaCuatroTest` / `PagoQrComprobanteTest` | ✅ |
 | 20.14 | Doble clic/validación concurrente no duplica el pago | `test_20_14_doble_validacion_http_no_duplica_pago` + `test_validar_dos_veces_el_mismo_aviso_no_duplica_el_pago` + `test_validar_por_http_dos_veces_no_duplica` | `PruebasAceptacionTest` / `EtapaCuatroTest` | ✅ |
 | 20.15 | Importe inválido o mayor al saldo: rechazado sin registros parciales | `test_20_15_aplicacion_invalida_es_rechazada_sin_registros_parciales` + `test_suma_aplicada_distinta_al_monto_queda_bloqueada` + `test_aplicacion_mayor_al_saldo_de_la_cuota_es_rechazada` | `PruebasAceptacionTest` / `EtapaCuatroTest` | ✅ |
-| 20.16 | El QR no inicia pagos reales; abrir WhatsApp no marca entrega | `test_20_16_qr_simulado_y_whatsapp_manual_no_acreditan_nada` + `test_enlace_whatsapp_es_manual_con_texto_precargado` | `PruebasAceptacionTest` / `EtapaCincoTest` | ✅ |
+| 20.16 | El QR no inicia pagos reales (solo acredita el operador tras verificar en el banco); abrir WhatsApp no marca entrega | `test_20_16_qr_y_whatsapp_manual_no_acreditan_nada` + `test_enlace_whatsapp_es_manual_con_texto_precargado` | `PruebasAceptacionTest` / `EtapaCincoTest` | ✅ |
 | 20.17 | Recuperación de contraseña con destinatario de prueba y fallos de correo | `test_20_17_recuperacion_de_contrasena_funciona_y_maneja_fallo_de_correo` + `Auth\PasswordResetTest` (4 pruebas) | `PruebasAceptacionTest` / `Auth\PasswordResetTest` | ✅ |
 | 20.18 | Importación detecta errores y duplicados sin sobrescribir | `test_20_18_importacion_detecta_duplicados_y_errores_sin_sobrescribir` + 4 pruebas de `InscripcionesImportacionTest` | `PruebasAceptacionTest` / `InscripcionesImportacionTest` | ✅ |
 | 20.19 | Totales idénticos entre pantalla, PDF y Excel | `test_20_19_totales_identicos_entre_pantalla_pdf_y_excel` + `test_reporte_aporte_por_curso_totales_coinciden_con_pantalla` | `PruebasAceptacionTest` / `EtapaCincoTest` | ✅ |
@@ -197,7 +201,7 @@ Mecanismos implementados (Tailwind, compilación local con Vite):
 $env:Path = "C:\xampp\php;" + $env:Path
 cd "D:\Software\MiPoyecto\Sistema de Gestion Educativa"
 
-# Suite completa (151 pruebas)
+# Suite completa (171 pruebas)
 php artisan test
 
 # Solo aceptación §20 (23 pruebas)

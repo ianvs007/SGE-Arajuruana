@@ -1,12 +1,12 @@
 {{--
     Vista: Detalle de un pago
-    Muestra un pago validado con sus datos, la forma en que se distribuyó entre
-    las cuotas de los hijos y un código QR de demostración. Desde aquí se puede
-    descargar el comprobante en PDF y, si se tiene permiso, anular el pago.
+    Muestra un pago validado con sus datos, la forma de pago (QR verificado en
+    el banco o efectivo en secretaría) y cómo se distribuyó entre las cuotas de
+    los hijos. Desde aquí se puede descargar el comprobante en PDF y, si se
+    tiene permiso, anular el pago.
 
     Variables que recibe del controlador:
     - $pago: el pago con sus relaciones (padre, confirmador, aviso, aplicaciones, anulación).
-    - $qrSvg: código QR en formato SVG generado en el servidor.
 --}}
 <x-app-layout>
     <x-slot name="header">
@@ -37,7 +37,7 @@
                 <div class="lg:col-span-2 space-y-6">
                     {{--
                         Datos generales del pago: comprobante, responsable, monto, quién lo validó y
-                        su origen (un aviso de pago o un registro directo en ventanilla).
+                        su origen (un aviso de pago por QR o un registro de efectivo en secretaría).
                     --}}
                     <div class="bg-white shadow-sm rounded-lg p-6">
                         <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
@@ -67,16 +67,26 @@
                                 <dd class="font-medium">{{ $pago->confirmador?->name }} · {{ optional($pago->validado_en)->format('d/m/Y H:i') }}</dd>
                             </div>
                             <div>
+                                <dt class="text-slate-500">Forma de pago</dt>
+                                <dd class="font-medium">{{ $pago->nombreMetodo() }}</dd>
+                            </div>
+                            <div>
                                 <dt class="text-slate-500">Origen</dt>
                                 <dd class="font-medium">
                                     @if ($pago->aviso)
                                         Aviso {{ $pago->aviso->referencia }}
                                         (<a href="{{ route('aporte.avisos.show', $pago->aviso) }}" class="text-sky-700 hover:underline">ver</a>)
                                     @else
-                                        Registro directo en ventanilla
+                                        Registro directo en secretaría
                                     @endif
                                 </dd>
                             </div>
+                            @if ($pago->operacion_bancaria)
+                                <div>
+                                    <dt class="text-slate-500">Nº de operación bancaria verificada</dt>
+                                    <dd class="font-mono font-medium">{{ $pago->operacion_bancaria }}</dd>
+                                </div>
+                            @endif
                             {{-- La nota del responsable y la observación del operador solo se muestran si existen --}}
                             @if ($pago->nota_responsable)
                                 <div class="sm:col-span-2">
@@ -141,22 +151,6 @@
                 </div>
 
                 <div class="space-y-6">
-                    {{--
-                        Código QR de demostración. Se imprime sin escapar porque es un SVG generado por
-                        el propio sistema. Se aclara bien que es una simulación y que no acredita pagos.
-                    --}}
-                    <div class="bg-white shadow-sm rounded-lg p-6 text-center">
-                        <h3 class="font-semibold text-slate-800 mb-1 text-sm">QR de demostración</h3>
-                        <div class="inline-block border-2 border-dashed border-amber-400 rounded-lg p-2 bg-amber-50/50">
-                            {!! $qrSvg !!}
-                        </div>
-                        <p class="mt-2 text-[11px] leading-snug text-amber-800">
-                            <strong>SIMULACIÓN — NO ACREDITA PAGO.</strong><br>
-                            Este código es solo demostrativo para el proyecto de grado;
-                            escanearlo no realiza ni confirma ningún pago.
-                        </p>
-                    </div>
-
                     {{--
                         Formulario para anular el pago. Solo lo ve quien tiene el permiso de anular pagos
                         (Administración) y solo si el pago sigue validado. Se pide un motivo obligatorio

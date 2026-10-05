@@ -14,14 +14,14 @@ use SimpleSoftwareIO\QrCode\Facades\QrCode;
 /**
  * Controlador de pagos de las cuentas (cargos) de los estudiantes.
  *
- * Atiende el flujo de pago por QR y WhatsApp: el responsable familiar
- * (permiso "pagos.ver") genera un pago sobre un cargo pendiente y envía el
- * comprobante por WhatsApp; luego un operador de Administración (permiso
- * "pagos.confirmar") revisa los pagos pendientes y los confirma o rechaza.
- * Al confirmar un pago, se actualiza automáticamente el estado del cargo.
+ * Es el flujo antiguo de pago por QR y WhatsApp sobre cargos de cuenta. Se
+ * conserva para consultar los pagos históricos y para que el personal registre
+ * pagos de cargos extraordinarios. Las familias ya no generan pagos aquí: el
+ * aporte mensual se paga con el QR del colegio ("Informar un pago") o en
+ * efectivo en secretaría, dentro del módulo de aporte.
  *
- * Cada responsable familiar solo puede ver y pagar sus propios cargos, para
- * que no tenga acceso a la información económica de otras familias.
+ * Cada responsable familiar solo puede ver sus propios pagos, para que no
+ * tenga acceso a la información económica de otras familias.
  */
 class PagoController extends Controller
 {
@@ -60,10 +60,11 @@ class PagoController extends Controller
      */
     public function create(Request $request, CargoCuenta $cuenta): View|RedirectResponse
     {
-        // Un padre no puede pagar (ni ver) un cargo que no es suyo.
+        // Las familias ya no generan pagos en este flujo antiguo: pagan con el
+        // QR del colegio desde "Informar un pago" o en efectivo en secretaría.
         $user = $request->user();
-        if ($user->esResponsableFamiliar() && $cuenta->padre_id !== $user->id) {
-            abort(403);
+        if ($user->esResponsableFamiliar()) {
+            return $this->redirigirAlFlujoActual();
         }
 
         // Si el cargo ya no tiene saldo, no tiene sentido mostrar el formulario.
@@ -92,10 +93,10 @@ class PagoController extends Controller
      */
     public function store(Request $request, CargoCuenta $cuenta): RedirectResponse
     {
-        // Repetimos la verificación de pertenencia también al guardar, no solo al mostrar el formulario.
+        // Igual que en el formulario: las familias no generan pagos aquí.
         $user = $request->user();
-        if ($user->esResponsableFamiliar() && $cuenta->padre_id !== $user->id) {
-            abort(403);
+        if ($user->esResponsableFamiliar()) {
+            return $this->redirigirAlFlujoActual();
         }
 
         // El monto debe ser positivo y no mayor al saldo pendiente, para evitar pagos de más.
@@ -247,5 +248,12 @@ class PagoController extends Controller
         ]);
 
         return back()->with('success', 'Pago rechazado.');
+    }
+
+    /** Envía a la familia a la pantalla actual para pagar el aporte. */
+    private function redirigirAlFlujoActual(): RedirectResponse
+    {
+        return redirect()->route('aporte.avisos.create')
+            ->with('error', 'Este medio de pago ya no se usa. Pague con el QR del colegio e informe su pago aquí, o pague en efectivo en secretaría.');
     }
 }

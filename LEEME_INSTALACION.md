@@ -262,8 +262,8 @@ El sistema **niega el acceso por defecto**: cada rol ve solo sus módulos.
   citaciones de sus alumnos y publica avisos, incluidos los generales.
 - **Responsable Familiar** — Solo lo autorizado de **sus representados**:
   estudiantes, salidas, citaciones dirigidas a él, avisos que le competen,
-  cuentas y pagos propios. Puede informar un pago con nota escrita y ver su
-  estado de cuenta.
+  cuentas y pagos propios. Puede informar un pago hecho con el QR del colegio
+  (meses que paga y comprobante del banco) y ver su estado de cuenta.
 
 **No existe registro público**: las cuentas las crea Administración desde el
 módulo Usuarios.

@@ -14,21 +14,25 @@ use App\Models\User;
 use App\Services\AporteService;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
+use Tests\Concerns\PagaConQr;
 use Tests\TestCase;
 
 /**
  * Etapa 4 (§14, §15) con sus pruebas de aceptación (§20.10–§20.16):
- * cuotas por alumno, avisos con nota escrita, validación transaccional,
- * distribución, comprobante interno y QR simulado.
+ * cuotas por alumno, avisos de pago por QR con comprobante, validación
+ * transaccional, distribución, comprobante interno y pago en efectivo.
  */
 class EtapaCuatroTest extends TestCase
 {
+    use PagaConQr;
     use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
+        Storage::fake('local');
         $this->seed(DatabaseSeeder::class);
     }
 
@@ -172,7 +176,7 @@ class EtapaCuatroTest extends TestCase
 
         AporteService::validarAviso($aviso, [
             ['cuota_id' => $cuota->id, 'monto' => '25.00'],
-        ], $admin);
+        ], $admin, operacionBancaria: 'OP-PARC01');
 
         $cuota->refresh();
         $this->assertSame('parcial', $cuota->estado);
@@ -209,7 +213,7 @@ class EtapaCuatroTest extends TestCase
             ['cuota_id' => $c2->id, 'monto' => '40.00'],
             ['cuota_id' => $c3->id, 'monto' => '40.00'],
             ['cuota_id' => $c4->id, 'monto' => '40.00'],
-        ], $admin);
+        ], $admin, operacionBancaria: 'OP-DIST01');
 
         // Un único pago (registro único del hecho económico, §14).
         $this->assertSame(1, Pago::where('aviso_id', $aviso->id)->count());
@@ -247,7 +251,7 @@ class EtapaCuatroTest extends TestCase
         try {
             AporteService::validarAviso($aviso, [
                 ['cuota_id' => $cuota->id, 'monto' => '40.00'],
-            ], $admin);
+            ], $admin, operacionBancaria: 'OP-EXCE01');
         } finally {
             // §20.15: sin registros parciales — nada se creó ni se modificó.
             $this->assertNull(Pago::where('aviso_id', $aviso->id)->first());
@@ -280,7 +284,7 @@ class EtapaCuatroTest extends TestCase
         try {
             AporteService::validarAviso($aviso, [
                 ['cuota_id' => $cuota->id, 'monto' => '45.00'], // saldo es 40
-            ], $admin);
+            ], $admin, operacionBancaria: 'OP-EXCE02');
         } finally {
             $this->assertNull(Pago::where('aviso_id', $aviso->id)->first());
             $cuota->refresh();
@@ -326,7 +330,7 @@ class EtapaCuatroTest extends TestCase
         try {
             AporteService::validarAviso($aviso, [
                 ['cuota_id' => $cuotaAjena->id, 'monto' => '40.00'],
-            ], $admin);
+            ], $admin, operacionBancaria: 'OP-AJENO1');
         } finally {
             $this->assertNull(Pago::where('aviso_id', $aviso->id)->first());
             $cuotaAjena->refresh();
@@ -344,12 +348,9 @@ class EtapaCuatroTest extends TestCase
         $cuota = CuotaAporte::where('estudiante_id', $hijo->id)->where('mes', 10)->firstOrFail();
         $saldoAntes = $cuota->saldoCentavos();
 
-        $this->actingAs($padre)
-            ->post(route('aporte.avisos.store'), [
-                'monto_declarado' => '40.00',
-                'nota' => 'Pagaré octubre de José Luis en la caja (prueba).',
-            ])
-            ->assertRedirect();
+        $this->informarPagoQr($padre, [$cuota->id => '40.00'])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $aviso = AvisoPago::where('padre_id', $padre->id)->latest('id')->firstOrFail();
         $this->assertSame('pendiente', $aviso->estado);
@@ -370,11 +371,9 @@ class EtapaCuatroTest extends TestCase
         $this->actingAs($admin)->post(route('aporte.avisos.store'), [])->assertForbidden();
 
         // Crea el aviso como el padre y lo rechaza Administración.
-        $this->actingAs($this->usuario('padre@sge.local'))
-            ->post(route('aporte.avisos.store'), [
-                'monto_declarado' => '40.00',
-                'nota' => 'Noviembre de María Fernanda (prueba).',
-            ])->assertRedirect();
+        $this->informarPagoQr($this->usuario('padre@sge.local'), [$cuota->id => '40.00'])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $aviso = AvisoPago::where('padre_id', $this->usuario('padre@sge.local')->id)
             ->latest('id')->firstOrFail();
@@ -416,11 +415,11 @@ class EtapaCuatroTest extends TestCase
         $aplicaciones = [['cuota_id' => $cuota->id, 'monto' => '40.00']];
 
         // Primera validación: OK.
-        AporteService::validarAviso($aviso, $aplicaciones, $admin);
+        AporteService::validarAviso($aviso, $aplicaciones, $admin, operacionBancaria: 'OP-DOBLE1');
 
         // Segunda validación (doble clic): rechazada por guardia de estado.
         try {
-            AporteService::validarAviso($aviso, $aplicaciones, $admin);
+            AporteService::validarAviso($aviso, $aplicaciones, $admin, operacionBancaria: 'OP-DOBLE1');
             $this->fail('La segunda validación debía abortarse.');
         } catch (ValidationException $e) {
             $this->assertStringContainsString('ya fue procesado', $e->errors()['aviso'][0] ?? '');
@@ -438,20 +437,15 @@ class EtapaCuatroTest extends TestCase
         $hijo = $this->estudiante('EST-2026-003');
         $cuota = CuotaAporte::where('estudiante_id', $hijo->id)->where('mes', 4)->firstOrFail();
 
-        $this->actingAs($this->usuario('madre@sge.local'))
-            ->post(route('aporte.avisos.store'), [
-                'monto_declarado' => '40.00',
-                'nota' => 'Abril de Ana Gabriela (prueba HTTP).',
-            ])->assertRedirect();
+        $this->informarPagoQr($this->usuario('madre@sge.local'), [$cuota->id => '40.00'])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $aviso = AvisoPago::where('padre_id', $this->usuario('madre@sge.local')->id)
             ->latest('id')->firstOrFail();
 
-        $payload = [
-            'aplicaciones' => [
-                ['cuota_id' => $cuota->id, 'monto' => '40.00'],
-            ],
-        ];
+        // El aviso declara el mes: el operador solo confirma la verificación bancaria.
+        $payload = $this->verificacionBancaria('OP-HTTP-0001');
 
         $this->actingAs($admin)
             ->post(route('aporte.avisos.validar', $aviso), $payload)
@@ -468,7 +462,7 @@ class EtapaCuatroTest extends TestCase
         $this->assertSame(1, Pago::where('aviso_id', $aviso->id)->count());
     }
 
-    // ============ §20.16 + §15: comprobante y QR simulado ============
+    // ============ §20.16 + §15: comprobante interno ============
 
     public function test_pago_validado_genera_comprobante_interno_sin_valor_fiscal(): void
     {
@@ -480,11 +474,12 @@ class EtapaCuatroTest extends TestCase
         $response->assertOk();
         $this->assertSame('application/pdf', $response->headers->get('Content-Type'));
 
-        // La pantalla del pago muestra la leyenda obligatoria y el QR marcado demo.
+        // La pantalla del pago muestra la leyenda obligatoria y la forma de pago.
         $this->actingAs($admin)->get(route('aporte.pagos.show', $pago))
             ->assertOk()
             ->assertSee('no válido como factura fiscal')
-            ->assertSee('SIMULACIÓN')
+            ->assertSee('Forma de pago')
+            ->assertDontSee('SIMULACIÓN')
             ->assertSee($pago->comprobante_numero);
     }
 
@@ -518,7 +513,7 @@ class EtapaCuatroTest extends TestCase
 
         $pago = AporteService::validarAviso($aviso, [
             ['cuota_id' => $cuota->id, 'monto' => '40.00'],
-        ], $admin);
+        ], $admin, operacionBancaria: 'OP-ANUL01');
 
         $cuota->refresh();
         $this->assertSame('pagada', $cuota->estado);
@@ -667,33 +662,37 @@ class EtapaCuatroTest extends TestCase
         try {
             AporteService::validarAviso($aviso, [
                 ['cuota_id' => $cuota->id, 'monto' => '40.00'],
-            ], $admin);
+            ], $admin, operacionBancaria: 'OP-EXENT1');
         } finally {
             $this->assertNull(Pago::where('aviso_id', $aviso->id)->first());
         }
     }
 
-    // ============ UI de la familia: informar pago con nota escrita ============
+    // ============ UI de la familia: informar pago por QR con comprobante ============
 
-    public function test_responsable_informa_pago_con_nota_sin_adjuntos(): void
+    public function test_responsable_informa_pago_qr_con_meses_y_comprobante(): void
     {
         $padre = $this->usuario('padre@sge.local');
+        $cuota = CuotaAporte::where('estudiante_id', $this->estudiante('EST-2026-001')->id)
+            ->where('mes', 9)->firstOrFail();
 
-        // El formulario no ofrece campo de archivo; un adjunto forzado se rechaza.
-        $response = $this->actingAs($padre)->post(route('aporte.avisos.store'), [
-            'monto_declarado' => '40.00',
-            'nota' => 'Pago de septiembre en caja (prueba).',
-        ]);
-        $response->assertRedirect();
+        $this->informarPagoQr($padre, [$cuota->id => '40.00'])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $aviso = AvisoPago::where('padre_id', $padre->id)->latest('id')->firstOrFail();
         $this->assertSame('pendiente', $aviso->estado);
         $this->assertSame('40.00', (string) $aviso->monto_declarado);
+        $this->assertSame(1, $aviso->cuotasDeclaradas()->count());
+        Storage::disk('local')->assertExists($aviso->comprobante_ruta);
 
-        // Pantallas de la familia accesibles.
+        // Pantallas de la familia: con el QR del colegio cargado se ven ambas opciones.
+        $this->configurarQrDelColegio();
         $this->actingAs($padre)->get(route('aporte.avisos.index'))->assertOk();
         $this->actingAs($padre)->get(route('aporte.avisos.create'))->assertOk()
-            ->assertSee('nota escrita');
+            ->assertSee('Opción 1: pagar con QR')
+            ->assertSee('Opción 2: pagar en efectivo')
+            ->assertSee('Banco de Prueba');
         $this->actingAs($padre)->get(route('aporte.pagos.index'))->assertOk();
     }
 
@@ -714,13 +713,16 @@ class EtapaCuatroTest extends TestCase
                     ['cuota_id' => $cuota->id, 'monto' => '40.00'],
                 ],
                 'observacion' => 'Efectivo recibido en caja (prueba).',
+                'efectivo_recibido' => '1',
             ])
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $pago = Pago::where('padre_id', $padre->id)->whereNull('aviso_id')
             ->whereNotNull('comprobante_numero')->latest('id')->firstOrFail();
         $this->assertSame('validado', $pago->estado);
-        $this->assertSame('ventanilla', $pago->metodo);
+        $this->assertSame('efectivo', $pago->metodo);
+        $this->assertNull($pago->operacion_bancaria);
 
         $cuota->refresh();
         $this->assertSame('pagada', $cuota->estado);

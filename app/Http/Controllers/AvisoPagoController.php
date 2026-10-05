@@ -3,35 +3,41 @@
 namespace App\Http\Controllers;
 
 use App\Models\AvisoPago;
+use App\Models\AvisoPagoCuota;
 use App\Models\CuotaAporte;
 use App\Models\Gestion;
 use App\Models\User;
 use App\Services\AporteService;
 use App\Services\AuditoriaService;
+use App\Support\DatosPago;
 use App\Support\Dinero;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Controlador de los avisos de pago del aporte mensual (módulo económico).
  *
  * Un aviso de pago es la forma en que la familia le comunica a la institución
- * que ya realizó un pago (por ejemplo, un depósito o una transferencia). Este
- * controlador cubre todo el ciclo de vida de ese aviso:
+ * que ya pagó el aporte con el QR del colegio. Este controlador cubre todo el
+ * ciclo de vida de ese aviso:
  *
- * - Responsable familiar (permiso `aporte.avisos.informar`): informa el pago
- *   con una nota escrita, sin adjuntar imágenes de comprobantes. Mientras el
- *   aviso esté pendiente NO reduce la deuda, no acredita fondos y no genera
- *   comprobante; es solo una declaración que todavía debe revisarse. También
- *   puede anular su propio aviso mientras siga pendiente.
+ * - Responsable familiar (permiso `aporte.avisos.informar`): marca los meses
+ *   de sus hijos que está pagando, indica la fecha del pago y sube el
+ *   comprobante de su banco. Mientras el aviso esté pendiente NO reduce la
+ *   deuda, no acredita fondos y no genera comprobante interno. También puede
+ *   anular su propio aviso mientras siga pendiente.
  * - Administración y Coordinadora (permiso `aporte.avisos.gestionar`): revisan
- *   el aviso y lo validan, lo que crea un único pago y lo distribuye entre las
- *   cuotas de los hijos, o lo rechazan indicando el motivo. La validación es
- *   transaccional y está protegida contra el doble procesamiento dentro de
- *   `AporteService`.
- * - El Director tiene todos los permisos y, por tanto, puede hacer ambas cosas.
+ *   el comprobante, verifican en la plataforma de su banco (fuera del sistema)
+ *   que el dinero ingresó y recién entonces validan, con el número de
+ *   operación bancaria. Si el dinero no llegó, rechazan indicando el motivo.
+ *   La validación es transaccional y está protegida contra el doble
+ *   procesamiento dentro de `AporteService`.
+ * - El Director tiene todos los permisos y, por tanto, puede hacer ambas cosas,
+ *   aunque nunca puede validar un aviso que informó él mismo.
  *
  * Además de los permisos que exigen las rutas, cada aviso se valida registro
  * por registro para que una familia nunca pueda ver avisos ajenos.
@@ -92,14 +98,14 @@ class AvisoPagoController extends Controller
     }
 
     /**
-     * Muestra el formulario donde el responsable familiar informa un pago.
+     * Muestra la pantalla donde el responsable familiar informa un pago.
      *
-     * El formulario solo pide el monto declarado y una nota escrita. Para
-     * ayudar a la familia, junto al formulario se listan las cuotas que sus
-     * hijos todavía deben en la gestión actual y el total pendiente.
+     * Presenta las dos formas de pago: por QR (con el QR y la cuenta del
+     * colegio, y el formulario para marcar los meses y subir el comprobante) y
+     * en efectivo (instrucciones para pagar en secretaría).
      *
      * @return View Vista `aporte.avisos.create` con las cuotas pendientes, el
-     *              total adeudado en centavos y la gestión actual.
+     *              total adeudado en centavos, la gestión actual y los datos de pago.
      */
     public function create(Request $request): View
     {
@@ -125,20 +131,30 @@ class AvisoPagoController extends Controller
         // de los números decimales.
         $totalCentavos = $cuotasPendientes->sum(fn ($c) => $c->saldoCentavos());
 
+        // Meses que ya están en otro aviso pendiente: se muestran deshabilitados
+        // para que la familia no los informe dos veces.
+        $enAvisoPendiente = AvisoPagoCuota::whereIn('cuota_id', $cuotasPendientes->pluck('id'))
+            ->whereHas('aviso', fn ($q) => $q->where('estado', 'pendiente'))
+            ->pluck('cuota_id')->all();
+
         return view('aporte.avisos.create', [
             'cuotasPendientes' => $cuotasPendientes,
             'totalPendiente' => $totalCentavos,
             'gestion' => $gestion,
+            'datosPago' => DatosPago::obtener(),
+            'enAvisoPendiente' => $enAvisoPendiente,
         ]);
     }
 
     /**
-     * Guarda el aviso de pago informado por el responsable familiar.
+     * Guarda el aviso de pago por QR informado por el responsable familiar.
      *
-     * Valida el monto y la nota, rechaza cualquier archivo adjunto y registra
-     * el aviso en estado pendiente con una referencia única. La deuda del
-     * alumno no se modifica en este paso: eso solo ocurre cuando la
-     * institución valida el aviso.
+     * Valida los meses marcados, la fecha del pago y el comprobante. El tipo
+     * del comprobante se comprueba por su contenido real, no solo por la
+     * extensión del nombre. Las reglas económicas (meses de sus hijos, montos
+     * dentro del saldo, meses no repetidos en otro aviso, comprobante no
+     * repetido) las aplica `AporteService::informarAviso()`. La deuda del alumno
+     * no se modifica en este paso.
      *
      * @return RedirectResponse Redirige al detalle del aviso recién creado.
      */
@@ -146,42 +162,70 @@ class AvisoPagoController extends Controller
     {
         abort_unless($request->user()->can('aporte.avisos.informar'), 403);
 
-        // El monto es obligatorio y debe ser positivo; la nota es opcional pero
-        // limitada en longitud. El último arreglo da un nombre legible al campo
-        // en los mensajes de error.
         $data = $request->validate([
-            'monto_declarado' => ['required', 'numeric', 'min:0.01', 'max:99999999'],
+            'cuotas' => ['required', 'array', 'min:1'],
+            'cuotas.*.cuota_id' => ['required', 'integer', 'distinct', 'exists:cuotas_aporte,id'],
+            'cuotas.*.monto' => ['required', 'numeric', 'min:0.01', 'max:99999999'],
+            'fecha_pago' => ['required', 'date', 'before_or_equal:today', 'after_or_equal:'.now()->subYear()->toDateString()],
+            'comprobante' => [
+                'required', 'file',
+                'mimes:jpg,jpeg,png,pdf',
+                'mimetypes:'.implode(',', AvisoPago::COMPROBANTE_MIMES),
+                'max:'.AvisoPago::COMPROBANTE_MAX_KB,
+            ],
             'nota' => ['nullable', 'string', 'max:2000'],
-        ], [], ['monto_declarado' => 'monto pagado']);
+        ], [
+            'cuotas.required' => 'Marque al menos un mes que esté pagando.',
+            'comprobante.mimes' => 'El comprobante debe ser una foto JPG o PNG, o un PDF.',
+            'comprobante.mimetypes' => 'El comprobante debe ser una foto JPG o PNG, o un PDF.',
+            'fecha_pago.before_or_equal' => 'La fecha del pago no puede ser futura.',
+        ], [
+            'cuotas' => 'meses a pagar',
+            'cuotas.*.monto' => 'monto del mes',
+            'fecha_pago' => 'fecha del pago',
+            'comprobante' => 'comprobante',
+        ]);
 
-        // Defensa en profundidad: aunque el formulario no ofrece campos de
-        // archivo, rechazamos cualquier carga adjunta que alguien intente enviar
-        // manipulando la petición, porque el aviso se informa solo con nota escrita.
-        if ($request->hasFile('comprobante') || $request->allFiles() !== []) {
-            throw ValidationException::withMessages([
-                'nota' => 'No se aceptan archivos adjuntos en el aviso: informe el pago con la nota escrita.',
-            ]);
+        try {
+            $aviso = AporteService::informarAviso(
+                padre: $request->user(),
+                cuotas: array_values($data['cuotas']),
+                fechaPago: $data['fecha_pago'],
+                comprobante: $request->file('comprobante'),
+                nota: $data['nota'] ?? null,
+            );
+        } catch (ValidationException $e) {
+            return back()->withInput()->withErrors($e->errors());
         }
 
-        // Creamos el aviso en estado pendiente. El monto pasa primero a centavos
-        // y luego de vuelta a decimal para normalizarlo a dos decimales exactos.
-        $aviso = AvisoPago::create([
-            'referencia' => AvisoPago::generarReferencia(),
-            'padre_id' => $request->user()->id,
-            'gestion_id' => Gestion::actual()?->id,
-            'monto_declarado' => Dinero::aDecimal(Dinero::aCentavos($data['monto_declarado'])),
-            'nota' => $data['nota'] ?? null,
-            'estado' => 'pendiente',
-            'informado_en' => now(),
-        ]);
-
-        // Dejamos constancia en la auditoría de quién informó y por cuánto.
-        AuditoriaService::registrar('aporte.aviso.informar', $aviso, [
-            'monto_centavos' => $aviso->montoCentavos(),
-        ]);
-
         return redirect()->route('aporte.avisos.show', $aviso)
-            ->with('success', 'Aviso registrado ('.$aviso->referencia.'). La deuda NO cambia hasta que Administración valide el pago.');
+            ->with('success', 'Aviso registrado ('.$aviso->referencia.') por '.Dinero::formato($aviso->montoCentavos()).'. La deuda NO cambia hasta que el colegio verifique el pago en su banco y lo valide.');
+    }
+
+    /**
+     * Entrega el comprobante que subió la familia.
+     *
+     * Solo lo pueden abrir el responsable que lo subió y el personal autorizado
+     * (validación por registro). Se envía con su tipo real y sin permitir que
+     * el navegador lo interprete como otro tipo de archivo.
+     */
+    public function comprobante(Request $request, AvisoPago $aviso): StreamedResponse
+    {
+        $this->authorizeVer($request->user(), $aviso);
+        abort_unless($aviso->tieneComprobante() && Storage::disk('local')->exists($aviso->comprobante_ruta), 404);
+
+        $extension = $aviso->comprobante_mime === 'application/pdf' ? 'pdf' : ($aviso->comprobante_mime === 'image/png' ? 'png' : 'jpg');
+
+        return Storage::disk('local')->response(
+            $aviso->comprobante_ruta,
+            'comprobante-'.$aviso->referencia.'.'.$extension,
+            [
+                'Content-Type' => $aviso->comprobante_mime,
+                'X-Content-Type-Options' => 'nosniff',
+                'Cache-Control' => 'private, no-store',
+            ],
+            'inline'
+        );
     }
 
     /**
@@ -204,13 +248,13 @@ class AvisoPagoController extends Controller
 
         // Cargamos de una vez las relaciones que la vista necesita, incluido el
         // pago generado y sus aplicaciones a cuotas si el aviso ya fue validado.
-        $aviso->load(['padre', 'gestion', 'revisor', 'pago.aplicaciones.cuota.estudiante']);
+        $aviso->load(['padre', 'gestion', 'revisor', 'pago.aplicaciones.cuota.estudiante', 'cuotasDeclaradas.cuota.estudiante']);
 
-        // Para poder validar hacen falta las cuotas con saldo de los
-        // representados de quien avisó, agrupadas por alumno, porque un mismo
-        // pago puede repartirse entre varios hijos y varios meses.
+        // Solo los avisos antiguos, que no declaran meses, necesitan que el
+        // operador elija la distribución: para ellos cargamos las cuotas con
+        // saldo de los representados de quien avisó, agrupadas por alumno.
         $cuotas = collect();
-        if ($user->can('aporte.avisos.gestionar') && $aviso->estaPendiente()) {
+        if ($user->can('aporte.avisos.gestionar') && $aviso->estaPendiente() && $aviso->cuotasDeclaradas->isEmpty()) {
             // Obtenemos los hijos del responsable que informó el aviso (no los
             // del usuario actual, que aquí es personal institucional).
             $alumnoIds = User::findOrFail($aviso->padre_id)
@@ -234,13 +278,14 @@ class AvisoPagoController extends Controller
     }
 
     /**
-     * Valida manualmente un aviso de pago.
+     * Valida un aviso de pago por QR, después de verificar el pago en el banco.
      *
-     * Al validar se crea un único pago y se distribuye entre las cuotas que
-     * indique quien revisa. Toda la lógica transaccional (bloqueos de filas,
-     * controles contra el doble procesamiento y verificación de que la suma
-     * distribuida coincida exactamente) vive en `AporteService`, de modo que
-     * las pruebas automáticas y la interfaz compartan las mismas reglas.
+     * El operador debe marcar que verificó en la plataforma de su banco que el
+     * dinero ingresó y escribir el número de operación bancaria. Si el aviso
+     * declara meses, se cancelan esos meses; solo los avisos antiguos traen la
+     * distribución desde el formulario. Toda la lógica transaccional (bloqueos,
+     * doble procesamiento, número de operación único, suma exacta) vive en
+     * `AporteService`, de modo que las pruebas y la interfaz compartan las reglas.
      *
      * @param  AvisoPago  $aviso  Aviso pendiente que se va a validar.
      * @return RedirectResponse Redirige al detalle del pago generado o vuelve
@@ -251,14 +296,20 @@ class AvisoPagoController extends Controller
         abort_unless($request->user()->can('aporte.avisos.gestionar'), 403);
         $this->authorizeVer($request->user(), $aviso);
 
+        $declaraMeses = $aviso->cuotasDeclaradas()->exists();
+
         $data = $request->validate([
-            // La distribución llega como filas de cuota y monto, porque un solo
-            // pago puede cubrir cuotas de varios hijos y de varios meses.
-            'aplicaciones' => ['required', 'array', 'min:1'],
+            'verificado_banco' => ['accepted'],
+            'operacion_bancaria' => ['required', 'string', 'max:60'],
+            // Solo los avisos sin meses declarados traen la distribución.
+            'aplicaciones' => [$declaraMeses ? 'nullable' : 'required', 'array', 'min:1'],
             'aplicaciones.*.cuota_id' => ['required', 'integer', 'exists:cuotas_aporte,id'],
             'aplicaciones.*.monto' => ['required', 'numeric', 'min:0.01'],
             'observacion' => ['nullable', 'string', 'max:500'],
-        ], [], [], [
+        ], [
+            'verificado_banco.accepted' => 'Antes de validar debe verificar en la plataforma del banco que el dinero ingresó y marcar la casilla.',
+        ], [
+            'operacion_bancaria' => 'número de operación bancaria',
             'aplicaciones.*.cuota_id' => 'cuota',
             'aplicaciones.*.monto' => 'monto aplicado',
         ]);
@@ -268,9 +319,10 @@ class AvisoPagoController extends Controller
         try {
             $pago = AporteService::validarAviso(
                 $aviso,
-                $data['aplicaciones'],
+                $data['aplicaciones'] ?? [],
                 $request->user(),
                 $data['observacion'] ?? null,
+                $data['operacion_bancaria'],
             );
         } catch (ValidationException $e) {
             // Los errores de reglas económicas se muestran al usuario; como todo

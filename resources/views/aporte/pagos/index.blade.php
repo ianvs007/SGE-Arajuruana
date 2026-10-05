@@ -12,9 +12,9 @@
     <x-slot name="header">
         <div class="flex flex-wrap justify-between items-center gap-3">
             <h2 class="font-semibold text-xl text-slate-800 leading-tight">Pagos validados (§14)</h2>
-            {{-- Solo Administración puede registrar pagos recibidos directamente en ventanilla --}}
+            {{-- Solo el personal autorizado registra pagos recibidos en efectivo en secretaría --}}
             @can('aporte.avisos.gestionar')
-                <a href="{{ route('aporte.pagos.create') }}"><x-primary-button type="button">Registrar pago en ventanilla</x-primary-button></a>
+                <a href="{{ route('aporte.pagos.create') }}"><x-primary-button type="button">Registrar pago en efectivo</x-primary-button></a>
             @endcan
         </div>
     </x-slot>

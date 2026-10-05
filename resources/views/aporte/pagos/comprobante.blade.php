@@ -13,7 +13,7 @@
       CUF ni se parece a una factura.
     - Si el pago fue anulado, el comprobante no desaparece; se marca como ANULADO.
     - Los totales se calculan igual que en la pantalla (a partir de centavos).
-    - El QR del sistema es solo de demostración y así se aclara en el pie.
+    - Indica la forma de pago y, si fue por QR, el número de operación bancaria verificado.
 --}}
 <!DOCTYPE html>
 <html lang="es">
@@ -47,7 +47,6 @@
         .total { font-weight: bold; font-size: 12px; }
         .pie { margin-top: 26px; border-top: 1px solid #cbd5e1; padding-top: 10px; font-size: 8.5px; color: #475569; }
         .firma { margin-top: 40px; width: 55%; border-top: 1px solid #334155; padding-top: 4px; font-size: 9px; text-align: center; }
-        .qr-demo { margin-top: 10px; font-size: 8px; color: #92400e; }
     </style>
 </head>
 <body>
@@ -96,7 +95,13 @@
             <td class="etiqueta">Responsable familiar</td>
             <td>{{ $pago->padre?->name }}</td>
             <td class="etiqueta">Origen</td>
-            <td>{{ $pago->aviso ? 'Aviso de pago '.$pago->aviso->referencia : 'Registro en ventanilla' }}</td>
+            <td>{{ $pago->aviso ? 'Aviso de pago '.$pago->aviso->referencia : 'Registro en secretaría' }}</td>
+        </tr>
+        <tr>
+            <td class="etiqueta">Forma de pago</td>
+            <td>{{ $pago->nombreMetodo() }}</td>
+            <td class="etiqueta">Nº operación bancaria</td>
+            <td>{{ $pago->operacion_bancaria ?: '—' }}</td>
         </tr>
         <tr>
             <td class="etiqueta">Validado por</td>
@@ -154,10 +159,6 @@
         {{ now()->format('d/m/Y H:i') }} (hora de Bolivia).
         La obligación de aporte corresponde al alumno; este comprobante refleja la distribución
         registrada por Administración.
-        <div class="qr-demo">
-            Nota: el sistema incluye un código QR de DEMOSTRACIÓN para el proyecto de grado;
-            su escaneo no acredita pago alguno.
-        </div>
     </div>
 
     <div class="firma">Firma autorizada — Administración</div>

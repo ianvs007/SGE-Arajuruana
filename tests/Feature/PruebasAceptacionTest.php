@@ -21,6 +21,7 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
+use Tests\Concerns\PagaConQr;
 use Tests\TestCase;
 
 /**
@@ -37,11 +38,13 @@ use Tests\TestCase;
  */
 class PruebasAceptacionTest extends TestCase
 {
+    use PagaConQr;
     use RefreshDatabase;
 
     protected function setUp(): void
     {
         parent::setUp();
+        Storage::fake('local');
         $this->seed(DatabaseSeeder::class);
     }
 
@@ -387,13 +390,14 @@ class PruebasAceptacionTest extends TestCase
             ->where('estado', 'pendiente')->firstOrFail();
         $padre = $this->usuario('padre@sge.local');
 
-        // Pago directo en ventanilla por HTTP (formulario real, §20.11).
+        // Pago en efectivo en secretaría por HTTP (formulario real, §20.11).
         $this->actingAs($admin)->post(route('aporte.pagos.store'), [
             'padre_id' => $padre->id,
             'monto' => '20.00',
             'aplicaciones' => [['cuota_id' => $cuota->id, 'monto' => '20.00']],
             'observacion' => 'Abono parcial de Bs 20 (aceptación §20.11).',
-        ])->assertRedirect();
+            'efectivo_recibido' => '1',
+        ])->assertRedirect()->assertSessionHasNoErrors();
 
         $cuota->refresh();
         $this->assertSame('parcial', $cuota->estado);
@@ -423,7 +427,8 @@ class PruebasAceptacionTest extends TestCase
                 ['cuota_id' => $cuotaHijo->id, 'monto' => '40.00'],
             ],
             'observacion' => 'Bs 80 entre dos hijos, septiembre (aceptación §20.12).',
-        ])->assertRedirect();
+            'efectivo_recibido' => '1',
+        ])->assertRedirect()->assertSessionHasNoErrors();
 
         $pago = Pago::where('padre_id', $padre->id)->whereNull('aviso_id')->latest('id')->firstOrFail();
         $this->assertSame(8000, $pago->montoCentavos());
@@ -440,16 +445,16 @@ class PruebasAceptacionTest extends TestCase
     {
         $madre = $this->usuario('madre@sge.local');
         $hija = $this->estudiante('EST-2026-003');
-        $cuota = CuotaAporte::where('estudiante_id', $hija->id)->where('mes', 3)
+        $cuota = CuotaAporte::where('estudiante_id', $hija->id)->where('mes', 4)
             ->where('estado', 'pendiente')->firstOrFail();
         $saldoAntes = $cuota->saldoCentavos();
+        $avisosAntes = AvisoPago::count();
 
-        // La madre informa el pago por HTTP (formulario real).
-        $this->actingAs($madre)->post(route('aporte.avisos.store'), [
-            'monto_declarado' => '40.00',
-            'nota' => 'Pagué marzo en la caja (aceptación §20.13).',
-        ])->assertRedirect();
+        // La madre informa por HTTP que pagó abril con QR, con su comprobante.
+        $this->informarPagoQr($madre, [$cuota->id => '40.00'])
+            ->assertRedirect()->assertSessionHasNoErrors();
 
+        $this->assertSame($avisosAntes + 1, AvisoPago::count());
         $aviso = AvisoPago::where('padre_id', $madre->id)->latest('id')->firstOrFail();
         $this->assertSame('pendiente', $aviso->estado);
 
@@ -469,17 +474,16 @@ class PruebasAceptacionTest extends TestCase
         $hijo = $this->estudiante('EST-2026-002');
         $cuota = CuotaAporte::where('estudiante_id', $hijo->id)->where('mes', 10)->firstOrFail();
 
-        $this->actingAs($this->usuario('padre@sge.local'))
-            ->post(route('aporte.avisos.store'), [
-                'monto_declarado' => '40.00',
-                'nota' => 'Octubre de José Luis (aceptación §20.14).',
-            ])->assertRedirect();
+        $this->informarPagoQr($this->usuario('padre@sge.local'), [$cuota->id => '40.00'])
+            ->assertRedirect()->assertSessionHasNoErrors();
         $aviso = AvisoPago::where('padre_id', $this->usuario('padre@sge.local')->id)->latest('id')->firstOrFail();
 
-        $payload = ['aplicaciones' => [['cuota_id' => $cuota->id, 'monto' => '40.00']]];
+        // El operador verificó el ingreso en su banco y anota el número de operación.
+        $payload = $this->verificacionBancaria('OP-2014-0001');
 
         // Primer envío (doble clic): validado.
-        $this->actingAs($admin)->post(route('aporte.avisos.validar', $aviso), $payload)->assertRedirect();
+        $this->actingAs($admin)->post(route('aporte.avisos.validar', $aviso), $payload)
+            ->assertRedirect()->assertSessionHasNoErrors();
         // Segundo envío inmediato: rechazado con error, SIN segundo pago.
         $this->actingAs($admin)->from(route('aporte.avisos.show', $aviso))
             ->post(route('aporte.avisos.validar', $aviso), $payload)
@@ -500,21 +504,36 @@ class PruebasAceptacionTest extends TestCase
         $hija = $this->estudiante('EST-2026-001');
         $cuota = CuotaAporte::where('estudiante_id', $hija->id)->where('mes', 7)->firstOrFail();
 
-        $this->actingAs($this->usuario('madre@sge.local'))
-            ->post(route('aporte.avisos.store'), [
-                'monto_declarado' => '40.00',
-                'nota' => 'Julio de María Fernanda (aceptación §20.15).',
-            ])->assertRedirect();
-        $aviso = AvisoPago::where('padre_id', $this->usuario('madre@sge.local')->id)->latest('id')->firstOrFail();
+        $madre = $this->usuario('madre@sge.local');
+        $avisosAntes = AvisoPago::count();
+
+        // La familia declara Bs 50 para una cuota de Bs 40: el aviso ni se crea.
+        $this->from(route('aporte.avisos.create'));
+        $this->informarPagoQr($madre, [$cuota->id => '50.00'])
+            ->assertRedirect(route('aporte.avisos.create'))
+            ->assertSessionHasErrors('cuotas');
+        $this->assertSame($avisosAntes, AvisoPago::count());
+        Storage::disk('local')->assertDirectoryEmpty('comprobantes/'.now()->format('Y/m'));
+
+        // Aviso antiguo sin meses declarados: el operador intenta aplicar Bs 50.
+        $aviso = AvisoPago::create([
+            'referencia' => 'AVI-TEST-2015',
+            'padre_id' => $madre->id,
+            'gestion_id' => $cuota->gestion_id,
+            'monto_declarado' => '50.00',
+            'nota' => 'Julio de María Fernanda (aceptación §20.15).',
+            'estado' => 'pendiente',
+            'informado_en' => now(),
+        ]);
 
         $pagosAntes = Pago::count();
         $aplicacionesAntes = \App\Models\PagoAplicacion::count();
 
         // Aplicación MAYOR al saldo de la cuota (Bs 50 > Bs 40): rechazada.
         $this->actingAs($admin)->from(route('aporte.avisos.show', $aviso))
-            ->post(route('aporte.avisos.validar', $aviso), [
+            ->post(route('aporte.avisos.validar', $aviso), $this->verificacionBancaria('OP-2015-0001', [
                 'aplicaciones' => [['cuota_id' => $cuota->id, 'monto' => '50.00']],
-            ])->assertSessionHasErrors();
+            ]))->assertSessionHasErrors('aplicaciones');
 
         // Sin registros parciales: ni pago, ni aplicaciones, ni cambio de estado.
         $this->assertSame($pagosAntes, Pago::count());
@@ -524,20 +543,27 @@ class PruebasAceptacionTest extends TestCase
     }
 
     // =====================================================================
-    // §20.16 — El QR no inicia pagos reales; abrir WhatsApp no marca entrega
+    // §20.16 — Pagar con QR no acredita nada por sí solo; abrir WhatsApp no marca entrega
     // =====================================================================
 
-    public function test_20_16_qr_simulado_y_whatsapp_manual_no_acreditan_nada(): void
+    public function test_20_16_qr_y_whatsapp_manual_no_acreditan_nada(): void
     {
         $admin = $this->admin();
-        $pago = Pago::whereNotNull('comprobante_numero')->firstOrFail();
+        $padre = $this->usuario('padre@sge.local');
+        $cuota = CuotaAporte::where('estudiante_id', $this->estudiante('EST-2026-002')->id)
+            ->where('mes', 11)->firstOrFail();
 
-        // El QR es demostrativo: la pantalla lo identifica como SIMULACIÓN.
-        // El payload se genera en el controlador con prefijo DEMO-NO-VALIDO y
-        // sin cuentas reales (§15); al renderizarse como SVG, el texto no
-        // aparece en el HTML, así que se verifica la leyenda visible.
-        $pantalla = $this->actingAs($admin)->get(route('aporte.pagos.show', $pago))->assertOk();
-        $pantalla->assertSee('SIMULACIÓN')->assertSee('no válido como factura fiscal');
+        // Informar un pago por QR (con comprobante) NO acredita nada: el sistema
+        // no consulta al banco y la deuda solo baja cuando un operador verifica
+        // el ingreso en su banco y valida el aviso.
+        $this->informarPagoQr($padre, [$cuota->id => '40.00'])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(4000, $cuota->fresh()->saldoCentavos());
+
+        $pago = Pago::whereNotNull('comprobante_numero')->firstOrFail();
+        $this->actingAs($admin)->get(route('aporte.pagos.show', $pago))->assertOk()
+            ->assertSee('no válido como factura fiscal')
+            ->assertDontSee('SIMULACIÓN');
 
         // Abrir el enlace WhatsApp de una citación NO cambia su estado (sigue
         // pendiente; la entrega NO se marca por abrir el enlace, §13).
