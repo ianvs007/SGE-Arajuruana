@@ -1,0 +1,86 @@
+erDiagram
+    estudiantes ||--o{ salidas_estudiantes : "sale"
+    users ||--o{ salidas_estudiantes : "registrado_por"
+    users |o--o{ salidas_estudiantes : "autorizado / salida / retorno"
+    estudiantes ||--o{ incidencias : "protagoniza"
+    incidencias_categorias |o--o{ incidencias : "clasifica"
+    users ||--o{ incidencias : "registrado_por"
+    estudiantes ||--o{ citaciones : "motiva"
+    users ||--o{ citaciones : "padre_id / generado_por"
+    users |o--o{ citaciones : "seguimiento_responsable"
+    incidencias |o--o{ citaciones : "origina"
+
+    users {
+        bigint id PK
+        varchar name
+        varchar email UK
+    }
+    estudiantes {
+        bigint id PK
+        varchar codigo UK
+        varchar nombres
+        varchar apellidos
+    }
+    salidas_estudiantes {
+        bigint id PK
+        bigint estudiante_id FK "IDX(estudiante_id, estado)"
+        date fecha
+        varchar estado "autorizada|salida_efectiva|retornada|cancelada"
+        varchar motivo "salud|emergencia|familiar|otro"
+        bigint autorizado_por FK "users.id, nullable"
+        timestamp autorizado_en "nullable"
+        time hora_salida "nullable"
+        timestamp salida_en "nullable"
+        bigint salida_registrado_por FK "users.id, nullable"
+        time hora_retorno "nullable"
+        timestamp retorno_en "nullable"
+        bigint retorno_registrado_por FK "users.id, nullable"
+        varchar responsable_retiro "nullable"
+        varchar documento_responsable "nullable"
+        varchar verificacion_retiro "nullable"
+        text observacion "nullable"
+        bigint registrado_por FK "users.id"
+        timestamp created_at
+        timestamp updated_at
+    }
+    incidencias_categorias {
+        bigint id PK
+        varchar nombre UK
+        text descripcion "nullable"
+        boolean activa
+        timestamp created_at
+        timestamp updated_at
+    }
+    incidencias {
+        bigint id PK
+        bigint estudiante_id FK
+        date fecha
+        varchar tipo
+        bigint categoria_id FK "nullable"
+        boolean confidencial
+        text descripcion
+        text medida_accion "nullable"
+        text observaciones "nullable"
+        varchar estado_seguimiento "abierta|en_seguimiento|cerrada"
+        bigint registrado_por FK "users.id"
+        timestamp created_at
+        timestamp updated_at
+    }
+    citaciones {
+        bigint id PK
+        bigint estudiante_id FK
+        bigint padre_id FK "users.id"
+        date fecha
+        time hora
+        varchar motivo
+        text descripcion "nullable"
+        bigint incidencia_id FK "nullable"
+        varchar estado "pendiente|atendida|no_asistio|cancelada"
+        text observaciones_seguimiento "nullable"
+        text acuerdos "nullable"
+        bigint seguimiento_responsable_id FK "users.id, nullable"
+        date fecha_revision "nullable"
+        bigint generado_por FK "users.id"
+        timestamp created_at
+        timestamp updated_at
+    }

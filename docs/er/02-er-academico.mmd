@@ -1,0 +1,140 @@
+erDiagram
+    gestiones |o--o{ cursos : "agrupa"
+    cursos |o--o{ estudiantes : "curso actual"
+    estudiantes ||--o{ inscripciones : "se inscribe"
+    gestiones ||--o{ inscripciones : "contiene"
+    cursos ||--o{ inscripciones : "recibe"
+    estudiantes ||--o{ estudiante_padre : "tiene responsable"
+    users ||--o{ estudiante_padre : "es responsable"
+    users ||--o{ docente_curso : "dicta"
+    cursos ||--o{ docente_curso : "asignado a"
+    gestiones ||--o{ docente_curso : "en gestión"
+    cursos ||--o{ horarios_curso : "tiene horario"
+    gestiones ||--o{ calendario_excepciones : "define"
+    cursos |o--o{ calendario_excepciones : "aplica a"
+    estudiantes ||--o{ asistencias : "registra"
+    inscripciones |o--o{ asistencias : "corresponde"
+    cursos |o--o{ asistencias : "toma"
+    users ||--o{ asistencias : "registrado_por"
+    users |o--o{ asistencias : "modificado_por"
+
+    users {
+        bigint id PK
+        varchar documento UK "nullable"
+        varchar name
+        varchar email UK
+        varchar telefono "nullable"
+        varchar direccion "nullable"
+        timestamp email_verified_at "nullable"
+        varchar password "hash"
+        varchar remember_token "nullable"
+        boolean activo
+        timestamp created_at
+        timestamp updated_at
+    }
+    gestiones {
+        bigint id PK
+        varchar nombre
+        smallint anio UK
+        date fecha_inicio "nullable"
+        date fecha_fin "nullable"
+        boolean es_actual
+        boolean activa
+        text observaciones "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    cursos {
+        bigint id PK
+        bigint gestion_id FK "nullable"
+        varchar nombre
+        varchar nivel "nullable"
+        varchar grado "nullable"
+        varchar paralelo "nullable"
+        varchar turno "manana|tarde|mixto"
+        smallint orden "nullable"
+        smallint anio_lectivo "legado"
+        boolean activo
+        timestamp created_at
+        timestamp updated_at
+    }
+    estudiantes {
+        bigint id PK
+        varchar codigo UK
+        varchar nombres
+        varchar apellidos
+        varchar documento UK "nullable"
+        date fecha_nacimiento "nullable"
+        varchar sexo "nullable"
+        bigint curso_id FK "nullable"
+        varchar estado
+        text observaciones "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    estudiante_padre {
+        bigint id PK
+        bigint estudiante_id FK "UK(estudiante_id, padre_id)"
+        bigint padre_id FK "users.id"
+        varchar parentesco
+        boolean es_principal
+        timestamp created_at
+        timestamp updated_at
+    }
+    inscripciones {
+        bigint id PK
+        bigint estudiante_id FK "UK(estudiante_id, gestion_id)"
+        bigint gestion_id FK
+        bigint curso_id FK "restrict on delete"
+        varchar estado "activa|retirada|trasladada|cancelada"
+        date fecha_inscripcion "nullable"
+        text observaciones "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    docente_curso {
+        bigint id PK
+        bigint user_id FK "UK(user_id, curso_id, gestion_id)"
+        bigint curso_id FK
+        bigint gestion_id FK
+        varchar rol_docente
+        timestamp created_at
+        timestamp updated_at
+    }
+    horarios_curso {
+        bigint id PK
+        bigint curso_id FK "UK(curso_id, dia_semana, turno, hora_inicio)"
+        tinyint dia_semana "1=lunes..7=domingo"
+        varchar turno
+        time hora_inicio "nullable"
+        time hora_fin "nullable"
+        boolean activo
+        timestamp vigente_desde "nullable"
+        timestamp vigente_hasta "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    calendario_excepciones {
+        bigint id PK
+        bigint gestion_id FK "UK(gestion_id, curso_id, fecha, tipo)"
+        bigint curso_id FK "nullable = todo el colegio"
+        date fecha
+        varchar tipo "sin_clases|feriado|actividad_interna"
+        varchar motivo "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    asistencias {
+        bigint id PK
+        bigint estudiante_id FK "UK(estudiante_id, fecha, turno)"
+        bigint inscripcion_id FK "nullable"
+        bigint curso_id FK "nullable"
+        date fecha
+        varchar turno
+        varchar estado "presente|ausente|justificado|tardanza"
+        text observacion "nullable"
+        bigint registrado_por FK "users.id"
+        bigint modificado_por FK "users.id, nullable"
+        timestamp created_at
+        timestamp updated_at
+    }

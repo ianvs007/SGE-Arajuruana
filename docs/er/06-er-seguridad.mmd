@@ -1,0 +1,58 @@
+erDiagram
+    users ||--o{ model_has_roles : "tiene rol"
+    roles ||--o{ model_has_roles : "asignado a"
+    roles ||--o{ role_has_permissions : "otorga"
+    permissions ||--o{ role_has_permissions : "incluido en"
+    users ||--o{ model_has_permissions : "permiso directo"
+    permissions ||--o{ model_has_permissions : "asignado a"
+    users |o--o{ sessions : "abre"
+
+    users {
+        bigint id PK
+        varchar documento UK "nullable"
+        varchar name
+        varchar email UK
+        varchar password "hash"
+        boolean activo
+    }
+    roles {
+        bigint id PK
+        varchar name "UK(name, guard_name)"
+        varchar guard_name
+        timestamp created_at
+        timestamp updated_at
+    }
+    permissions {
+        bigint id PK
+        varchar name "UK(name, guard_name)"
+        varchar guard_name
+        timestamp created_at
+        timestamp updated_at
+    }
+    model_has_roles {
+        bigint role_id PK,FK
+        varchar model_type PK "App\Models\User"
+        bigint model_id PK "users.id (polimórfico)"
+    }
+    model_has_permissions {
+        bigint permission_id PK,FK
+        varchar model_type PK "App\Models\User"
+        bigint model_id PK "users.id (polimórfico)"
+    }
+    role_has_permissions {
+        bigint permission_id PK,FK
+        bigint role_id PK,FK
+    }
+    sessions {
+        varchar id PK
+        bigint user_id "IDX, nullable (sin FK)"
+        varchar ip_address "nullable"
+        text user_agent "nullable"
+        longtext payload
+        int last_activity "IDX"
+    }
+    password_reset_tokens {
+        varchar email PK
+        varchar token
+        timestamp created_at "nullable"
+    }

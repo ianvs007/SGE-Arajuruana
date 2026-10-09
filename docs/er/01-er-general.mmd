@@ -1,0 +1,74 @@
+erDiagram
+    %% Modelo entidad-relación general (sin atributos). Fuente: database/migrations
+
+    %% ---------- Académico ----------
+    gestiones |o--o{ cursos : "agrupa"
+    cursos |o--o{ estudiantes : "curso actual"
+    estudiantes ||--o{ inscripciones : "se inscribe"
+    gestiones ||--o{ inscripciones : "contiene"
+    cursos ||--o{ inscripciones : "recibe"
+    estudiantes ||--o{ estudiante_padre : "tiene responsable"
+    users ||--o{ estudiante_padre : "es responsable"
+    users ||--o{ docente_curso : "dicta"
+    cursos ||--o{ docente_curso : "asignado a"
+    gestiones ||--o{ docente_curso : "en gestión"
+    cursos ||--o{ horarios_curso : "tiene horario"
+    gestiones ||--o{ calendario_excepciones : "define"
+    cursos |o--o{ calendario_excepciones : "aplica a"
+    estudiantes ||--o{ asistencias : "registra"
+    inscripciones |o--o{ asistencias : "corresponde"
+    cursos |o--o{ asistencias : "toma"
+    users ||--o{ asistencias : "registrado_por"
+    users |o--o{ asistencias : "modificado_por"
+
+    %% ---------- Convivencia ----------
+    estudiantes ||--o{ salidas_estudiantes : "sale"
+    users ||--o{ salidas_estudiantes : "registra / autoriza"
+    estudiantes ||--o{ incidencias : "protagoniza"
+    incidencias_categorias |o--o{ incidencias : "clasifica"
+    users ||--o{ incidencias : "registrado_por"
+    estudiantes ||--o{ citaciones : "motiva"
+    users ||--o{ citaciones : "padre / generado_por"
+    incidencias |o--o{ citaciones : "origina"
+
+    %% ---------- Económico ----------
+    gestiones ||--o| aporte_parametros : "configura"
+    gestiones ||--o{ cuotas_aporte : "genera"
+    estudiantes ||--o{ cuotas_aporte : "debe"
+    inscripciones |o--o{ cuotas_aporte : "origina"
+    users ||--o{ avisos_pago : "informa"
+    gestiones |o--o{ avisos_pago : "de gestión"
+    avisos_pago ||--o{ aviso_pago_cuotas : "detalla"
+    cuotas_aporte ||--o{ aviso_pago_cuotas : "incluida en"
+    avisos_pago |o--o{ pagos : "se valida en"
+    gestiones |o--o{ pagos : "de gestión"
+    users ||--o{ pagos : "paga / confirma"
+    cargos_cuenta |o--o{ pagos : "cancela"
+    pagos ||--o{ pago_aplicaciones : "se reparte"
+    cuotas_aporte ||--o{ pago_aplicaciones : "recibe"
+    estudiantes ||--o{ pago_aplicaciones : "beneficia"
+    pagos ||--o{ pago_anulaciones : "se anula"
+    users ||--o{ pago_anulaciones : "anulado_por"
+    users ||--o{ cargos_cuenta : "padre / creado_por"
+    estudiantes |o--o{ cargos_cuenta : "corresponde"
+
+    %% ---------- Comunicaciones y administración ----------
+    users ||--o{ avisos : "creado_por"
+    cursos |o--o{ avisos : "dirigido a"
+    estudiantes |o--o{ avisos : "dirigido a"
+    avisos ||--o{ aviso_destinatarios : "se envía a"
+    users ||--o{ aviso_destinatarios : "recibe"
+    users |o--o{ auditoria : "ejecuta"
+    users |o--o{ respaldos : "creado_por"
+
+    %% ---------- Seguridad (spatie/laravel-permission) ----------
+    users ||--o{ model_has_roles : "tiene"
+    roles ||--o{ model_has_roles : "asignado"
+    roles ||--o{ role_has_permissions : "otorga"
+    permissions ||--o{ role_has_permissions : "incluido en"
+    users ||--o{ model_has_permissions : "tiene directo"
+    permissions ||--o{ model_has_permissions : "asignado"
+
+    configuraciones {
+        bigint id PK
+    }

@@ -1,0 +1,85 @@
+erDiagram
+    users ||--o{ avisos : "creado_por"
+    cursos |o--o{ avisos : "dirigido a curso"
+    estudiantes |o--o{ avisos : "dirigido a familia"
+    avisos ||--o{ aviso_destinatarios : "se envía a"
+    users ||--o{ aviso_destinatarios : "recibe"
+    users |o--o{ auditoria : "ejecuta"
+    users |o--o{ respaldos : "creado_por"
+
+    users {
+        bigint id PK
+        varchar name
+        varchar email UK
+    }
+    cursos {
+        bigint id PK
+        varchar nombre
+    }
+    estudiantes {
+        bigint id PK
+        varchar codigo UK
+    }
+    avisos {
+        bigint id PK
+        varchar titulo
+        text contenido
+        varchar tipo "institucional|administrativo|seguimiento|citacion"
+        varchar audiencia "todos|padres|docentes|administrativos|curso|familia"
+        bigint curso_id FK "nullable"
+        bigint estudiante_id FK "nullable"
+        boolean requiere_confirmacion
+        timestamp confirmar_antes "nullable"
+        boolean publicado
+        timestamp publicado_en "nullable"
+        timestamp enviado_en "nullable"
+        bigint creado_por FK "users.id"
+        timestamp created_at
+        timestamp updated_at
+    }
+    aviso_destinatarios {
+        bigint id PK
+        bigint aviso_id FK "UK(aviso_id, user_id)"
+        bigint user_id FK
+        varchar motivo
+        timestamp leido_en "nullable"
+        timestamp confirmado_en "nullable"
+        timestamp correo_enviado_en "nullable"
+        varchar correo_estado "enviado|error|omitido"
+        varchar correo_error "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    auditoria {
+        bigint id PK
+        bigint user_id FK "nullable"
+        varchar accion "IDX"
+        varchar subject_type "polimórfico, nullable"
+        bigint subject_id "polimórfico, nullable"
+        json datos "nullable"
+        varchar ip "nullable"
+        timestamp created_at
+    }
+    respaldos {
+        bigint id PK
+        varchar archivo "storage/app/privado"
+        bigint tamano_bytes
+        varchar checksum "SHA-256, nullable"
+        varchar motor
+        varchar base_datos
+        smallint tablas
+        boolean incluye_env
+        varchar estado "ok|error"
+        varchar error "nullable"
+        text notas "nullable"
+        bigint creado_por FK "users.id, nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    configuraciones {
+        bigint id PK
+        varchar clave UK
+        text valor "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }

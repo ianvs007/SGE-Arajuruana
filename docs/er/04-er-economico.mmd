@@ -1,0 +1,161 @@
+erDiagram
+    gestiones ||--o| aporte_parametros : "configura"
+    gestiones ||--o{ cuotas_aporte : "genera"
+    estudiantes ||--o{ cuotas_aporte : "debe"
+    inscripciones |o--o{ cuotas_aporte : "origina"
+    users ||--o{ avisos_pago : "informa (padre)"
+    gestiones |o--o{ avisos_pago : "de gestión"
+    avisos_pago ||--o{ aviso_pago_cuotas : "detalla"
+    cuotas_aporte ||--o{ aviso_pago_cuotas : "incluida en"
+    avisos_pago |o--o{ pagos : "se valida en"
+    gestiones |o--o{ pagos : "de gestión"
+    users ||--o{ pagos : "padre_id"
+    users |o--o{ pagos : "confirmado_por"
+    cargos_cuenta |o--o{ pagos : "cancela"
+    pagos ||--o{ pago_aplicaciones : "se reparte"
+    cuotas_aporte ||--o{ pago_aplicaciones : "recibe"
+    estudiantes ||--o{ pago_aplicaciones : "beneficia"
+    pagos ||--o{ pago_anulaciones : "se anula"
+    users ||--o{ pago_anulaciones : "anulado_por"
+    users ||--o{ cargos_cuenta : "padre_id / creado_por"
+    estudiantes |o--o{ cargos_cuenta : "corresponde"
+
+    gestiones {
+        bigint id PK
+        smallint anio UK
+        varchar nombre
+    }
+    estudiantes {
+        bigint id PK
+        varchar codigo UK
+    }
+    inscripciones {
+        bigint id PK
+        bigint estudiante_id FK
+        bigint gestion_id FK
+    }
+    users {
+        bigint id PK
+        varchar name
+    }
+    aporte_parametros {
+        bigint id PK
+        bigint gestion_id FK,UK
+        decimal monto_mensual "10,2 (Bs 40)"
+        tinyint mes_inicio "2 = febrero"
+        tinyint mes_fin "11 = noviembre"
+        tinyint dia_vencimiento "10"
+        boolean activo
+        timestamp created_at
+        timestamp updated_at
+    }
+    cuotas_aporte {
+        bigint id PK
+        bigint gestion_id FK "UK(gestion_id, estudiante_id, anio, mes)"
+        bigint estudiante_id FK
+        bigint inscripcion_id FK "nullable"
+        smallint anio
+        tinyint mes "1-12"
+        decimal monto "10,2"
+        decimal saldo "10,2"
+        date fecha_emision
+        date fecha_vencimiento
+        varchar estado "pendiente|parcial|pagada|exenta"
+        varchar concepto
+        text observacion "nullable"
+        bigint creado_por FK "users.id, nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    avisos_pago {
+        bigint id PK
+        varchar referencia UK
+        bigint padre_id FK "users.id"
+        bigint gestion_id FK "nullable"
+        decimal monto_declarado "10,2"
+        date fecha_pago "nullable"
+        text nota "nullable"
+        varchar comprobante_ruta "nullable, disco privado"
+        varchar comprobante_nombre "nullable"
+        varchar comprobante_mime "nullable"
+        int comprobante_tamano "nullable"
+        char comprobante_hash "SHA-256, IDX"
+        varchar estado "pendiente|validado|rechazado|anulado"
+        timestamp informado_en "nullable"
+        bigint revisado_por FK "users.id, nullable"
+        timestamp revisado_en "nullable"
+        varchar motivo_rechazo "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    aviso_pago_cuotas {
+        bigint id PK
+        bigint aviso_id FK "UK(aviso_id, cuota_id)"
+        bigint cuota_id FK
+        decimal monto "10,2"
+        timestamp created_at
+        timestamp updated_at
+    }
+    cargos_cuenta {
+        bigint id PK
+        bigint padre_id FK "users.id"
+        bigint estudiante_id FK "nullable"
+        varchar concepto
+        decimal monto "12,2"
+        date fecha_emision
+        date fecha_vencimiento "nullable"
+        varchar estado "pendiente|parcial|pagado|anulado"
+        text observacion "nullable"
+        bigint creado_por FK "users.id"
+        timestamp created_at
+        timestamp updated_at
+    }
+    pagos {
+        bigint id PK
+        varchar referencia UK
+        varchar comprobante_numero UK "nullable"
+        bigint cargo_id FK "nullable"
+        bigint aviso_id FK "nullable"
+        bigint gestion_id FK "nullable"
+        bigint padre_id FK "users.id"
+        decimal monto "12,2"
+        decimal monto_validado "10,2, nullable"
+        varchar estado "pendiente|en_revision|confirmado|rechazado"
+        varchar metodo
+        varchar operacion_bancaria "nullable, historial"
+        varchar operacion_bancaria_activa UK "nullable"
+        text qr_payload "nullable"
+        varchar comprobante_nota "nullable"
+        text nota_responsable "nullable"
+        varchar whatsapp_destino "nullable"
+        timestamp solicitado_en "nullable"
+        bigint confirmado_por FK "users.id, nullable"
+        timestamp confirmado_en "nullable"
+        timestamp validado_en "nullable"
+        timestamp verificado_en "nullable"
+        text observacion_operador "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    pago_aplicaciones {
+        bigint id PK
+        bigint pago_id FK "UK(pago_id, cuota_id)"
+        bigint cuota_id FK
+        bigint estudiante_id FK
+        decimal monto_aplicado "10,2"
+        timestamp aplicado_en "nullable"
+        bigint aplicado_por FK "users.id, nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
+    pago_anulaciones {
+        bigint id PK
+        bigint pago_id FK
+        bigint anulado_por FK "users.id"
+        timestamp anulado_en
+        varchar motivo
+        decimal monto_original "10,2"
+        json aplicaciones_revertidas "nullable"
+        timestamp created_at
+        timestamp updated_at
+    }
