@@ -58,7 +58,7 @@ Las requieren los paquetes del proyecto: `zip` (importación Excel), `gd`
 (códigos QR de pago) y `pdo_mysql` (base de datos), entre otras:
 
 ```
-bcmath  ctype  curl  dom  exif  fileinfo  gd  iconv  json
+bcmath  ctype  curl  dom  exif  fileinfo  gd  iconv  intl  json
 mbstring  mysqli  openssl  pdo_mysql  session  SimpleXML  tokenizer  xml  zip
 ```
 

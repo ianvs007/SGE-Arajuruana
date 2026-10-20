@@ -36,7 +36,12 @@ title SGE Arajuruana - Servidor %URL% (no cerrar esta ventana)
 
 set "PHP=php"
 where php >nul 2>&1
-if errorlevel 1 set "PHP=C:\xampp\php\php.exe"
+if errorlevel 1 (
+    if exist "C:\xampp\php\php.exe" (
+        set "PHP=C:\xampp\php\php.exe"
+        set "PATH=C:\xampp\php;%PATH%"
+    )
+)
 
 REM --- 1. PHP ---------------------------------------------------------
 "%PHP%" -v >nul 2>&1
@@ -56,6 +61,9 @@ if not exist "vendor\autoload.php" (
     pause
     exit /b 1
 )
+
+REM Limpiar archivo hot si quedo de un proceso Vite anterior (evita perdida de CSS)
+if exist "public\hot" del /f /q "public\hot" >nul 2>&1
 
 REM --- 3. Puerto ya ocupado -------------------------------------------
 netstat -ano | findstr /r /c:":%PUERTO% .*LISTENING" >nul
@@ -131,6 +139,10 @@ echo  [OK] Puerto %PUERTO% libre
 echo  [OK] APP_URL: %APPURL%
 
 REM --- 5. MySQL -------------------------------------------------------
+netstat -ano | findstr /r /c:":3306 .*LISTENING" >nul
+if not errorlevel 1 goto mysql_ok
+
+net start MySQL80 >nul 2>&1
 netstat -ano | findstr /r /c:":3306 .*LISTENING" >nul
 if not errorlevel 1 goto mysql_ok
 

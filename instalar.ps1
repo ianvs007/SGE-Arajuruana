@@ -1,4 +1,4 @@
-﻿# =====================================================================
+# =====================================================================
 #  SGE Arajuruana - Instalador de primera ejecucion
 #  Logica real del instalador. INSTALAR.bat llama a este archivo.
 #
@@ -91,7 +91,7 @@ Write-Host ''
 Paso-Info 'Verificando extensiones de PHP...'
 
 $modulos = (& $phpExe -m) 2>&1 | ForEach-Object { "$_".Trim().ToLower() }
-$requeridas = @('pdo_mysql','mbstring','openssl','zip','gd','bcmath','ctype','curl','fileinfo','dom')
+$requeridas = @('pdo_mysql','mbstring','openssl','zip','gd','bcmath','ctype','curl','fileinfo','dom','intl')
 $faltan = @()
 
 foreach ($ext in $requeridas) {
